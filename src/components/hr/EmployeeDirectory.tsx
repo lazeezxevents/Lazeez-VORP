@@ -39,8 +39,8 @@ interface EmployeeDirectoryProps {
 }
 
 export function EmployeeDirectory({
-    employees,
-    departments,
+    employees = [],
+    departments = [],
     isAdmin,
     addEmployeeMutation,
     updateEmployeeMutation,

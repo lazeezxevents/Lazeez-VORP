@@ -68,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
+          // Expose debug info to the window for easy inspection (dev only)
+          if (!import.meta.env.PROD) {
+            (window as any).__authDebug = { user: currentSession.user, session: currentSession, isLoading };
+          }
           // Immediate override for Master Admin for speed
           if (currentSession.user.email === "highypestudio@gmail.com") {
             setRole("admin");
@@ -76,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           initialFetchDone.current = true;
         } else {
           setIsLoading(false);
+          if (!import.meta.env.PROD) {
+            (window as any).__authDebug = { user: null, session: null, isLoading: false };
+          }
         }
       } catch (error) {
         console.error("Auth init error:", error);
@@ -93,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Skip INITIAL_SESSION - we already handle it in initializeAuth
         if (event === "INITIAL_SESSION") return;
 
-        console.log("Auth event:", event);
+        // auth state change event
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -116,6 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const safetyTimeout = setTimeout(() => {
       if (mounted) {
         setIsLoading(false);
+        if (!import.meta.env.PROD) {
+          (window as any).__authDebug = { user: null, session: null, isLoading: false, timeout: true };
+        }
       }
     }, 8000);
 
@@ -210,6 +220,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       fetchInProgress.current = false;
       setIsLoading(false);
+      // Update debug info (dev only)
+      if (!import.meta.env.PROD) {
+        (window as any).__authDebug = { user, session, profile, role, isLoading: false };
+      }
+      // If running without a real Supabase (dev mock), auto-approve the profile so ProtectedRoute allows access
+      try {
+        // import.meta.env is available; check for missing supabase URL
+        if ((import.meta as any).env && !(import.meta as any).env.VITE_SUPABASE_URL && (process.env.NODE_ENV === 'development' || (import.meta as any).env.MODE === 'development')) {
+          if (user && (!profile || !profile.is_approved)) {
+            setProfile(prev => ({ ...(prev as any) , is_approved: true } as any));
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   }
 

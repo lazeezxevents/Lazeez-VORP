@@ -83,6 +83,7 @@ class ErrorBoundary extends Component<
 }
 
 const App = () => {
+  // Show splash on startup
   const [showSplash, setShowSplash] = useState(true);
 
   return (

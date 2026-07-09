@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import lazeezIcon from "@/assets/Lazeez Events  - Logo _Icon .png";
+import lazeezIcon from "@/assets/lazeez-logo.png";
 
 interface SplashScreenProps {
     onComplete?: () => void;
@@ -31,6 +31,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
                     }}
                     className="fixed inset-0 z-[9999] flex items-center justify-center bg-white overflow-hidden"
                 >
+                    
                     {/* Elite Cinematic Ambiance */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {/* Simplified Background */}
@@ -60,6 +61,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
                                 <img
                                     src={lazeezIcon}
                                     alt="Lazeez Logo"
+                                    onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
                                     className="w-32 h-32 md:w-52 md:h-52 object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.12)]"
                                 />
                             </motion.div>
