@@ -1,0 +1,26 @@
+
+%% UML class diagram (mermaid)
+classDiagram
+    class User {
+      +UUID id
+      +String name
+      +String email
+      +createBooking()
+    }
+    class Booking {
+      +UUID id
+      +UUID user_id
+      +UUID slot_id
+      +String status
+      +confirm()
+      +cancel()
+    }
+    class Slot {
+      +UUID id
+      +DateTime start
+      +DateTime end
+    }
+
+    User "1" -- "*" Booking : places
+    Slot "1" -- "*" Booking : contains
+

@@ -1,0 +1,13 @@
+
+%% Data Flow Diagram (Level 0) - Mermaid flowchart
+flowchart LR
+    Client[Client App] --&gt;|HTTP Requests| API[API Gateway]
+    API --&gt; Auth[Auth Service]
+    API --&gt; BookingService[Booking Service]
+    BookingService --&gt; DB[(Postgres DB)]
+    BookingService --&gt; MQ[(Message Queue)]
+    MQ --&gt; Worker[Background Worker]
+    Worker --&gt; Storage[(Object Storage)]
+    Analytics[Analytics] &lt;-- DB
+    API --&gt; Cache[(Redis Cache)]
+

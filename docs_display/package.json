@@ -1,0 +1,15 @@
+{
+  "name": "docs-display-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generate combined technical documentation PDF",
+  "main": "scripts/generate_pdf.js",
+  "scripts": {
+    "generate-docs": "node scripts/generate_pdf.js"
+  },
+  "dependencies": {
+    "marked": "^5.1.1",
+    "highlight.js": "^11.8.0",
+    "puppeteer": "^21.4.0"
+  }
+}

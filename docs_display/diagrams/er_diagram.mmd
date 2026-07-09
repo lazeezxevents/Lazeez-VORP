@@ -1,0 +1,21 @@
+%% Mermaid ER diagram starter
+erDiagram
+    USERS {
+        uuid id PK
+        string email
+        string name
+    }
+    SLOTS {
+        uuid id PK
+        datetime start
+        datetime end
+    }
+    BOOKINGS {
+        uuid id PK
+        uuid user_id FK
+        uuid slot_id FK
+        string status
+    }
+
+    USERS ||--o{ BOOKINGS : places
+    SLOTS ||--o{ BOOKINGS : contains

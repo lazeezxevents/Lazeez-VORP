@@ -1,0 +1,13 @@
+
+%% BPMN-like process (represented with flowchart)
+flowchart LR
+    User((User)) --&gt;|Request| APIGateway[API Gateway]
+    APIGateway --&gt; AuthService
+    AuthService --&gt;|valid| BookService[Booking Service]
+    BookService --&gt; CheckAvailability{Available?}
+    CheckAvailability -- Yes --&gt; Reserve[Reserve Slot]
+    Reserve --&gt; PaymentGateway
+    PaymentGateway --&gt;|success| Confirm[Confirm Booking]
+    Confirm --&gt; Notify[Notify User]
+    CheckAvailability -- No --&gt; Reject[Reject Request]
+

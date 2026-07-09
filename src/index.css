@@ -1,0 +1,449 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Montserrat:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Lazeez Events Brand Colors */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    /* Primary - Lazeez Pink #ED004F */
+    --primary: 342 100% 47%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Deeper Lazeez #CC054D */
+    --secondary: 344 96% 41%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 5% 45%;
+
+    --accent: 342 100% 95%;
+    --accent-foreground: 342 100% 35%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 10%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+
+    /* Priority Colors */
+    --priority-low: 142 76% 36%;
+    --priority-medium: 38 92% 50%;
+    --priority-high: 25 95% 53%;
+    --priority-critical: 0 84% 60%;
+
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 342 100% 47%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - White Glassmorphism */
+    --sidebar-background: 0 0% 100% / 0.85;
+    --sidebar-foreground: 240 10% 25%;
+    --sidebar-primary: 342 100% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 342 100% 47% / 0.1;
+    --sidebar-accent-foreground: 342 100% 40%;
+    --sidebar-border: 240 6% 90% / 0.8;
+    --sidebar-ring: 342 100% 47%;
+    --sidebar-muted: 240 5% 55%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(342 100% 47%), hsl(344 96% 41%));
+    --gradient-dark: linear-gradient(180deg, hsl(240 10% 8%), hsl(240 10% 12%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(240 10% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(240 10% 10% / 0.1), 0 2px 4px -2px hsl(240 10% 10% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(240 10% 10% / 0.1), 0 4px 6px -4px hsl(240 10% 10% / 0.1);
+    --shadow-glow: 0 0 20px hsl(342 100% 47% / 0.2);
+  }
+
+  .dark {
+    --background: 240 10% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 240 10% 10%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 240 10% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 342 100% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 344 96% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 8% 18%;
+    --muted-foreground: 240 5% 55%;
+
+    --accent: 342 50% 20%;
+    --accent-foreground: 342 100% 70%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 8% 18%;
+    --input: 240 8% 18%;
+    --ring: 342 100% 55%;
+
+    --sidebar-background: 240 10% 4%;
+    --sidebar-foreground: 240 5% 85%;
+    --sidebar-primary: 342 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 8% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 8% 12%;
+    --sidebar-ring: 342 100% 55%;
+    --sidebar-muted: 240 5% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-family: 'Poppins', 'Inter', sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight font-bold;
+    font-family: 'Montserrat', 'Poppins', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Stagger delay utilities for cascading animations */
+  .stagger-1 {
+    animation-delay: 60ms;
+  }
+
+  .stagger-2 {
+    animation-delay: 120ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 180ms;
+  }
+
+  .stagger-4 {
+    animation-delay: 240ms;
+  }
+
+  .stagger-5 {
+    animation-delay: 300ms;
+  }
+
+  .stagger-6 {
+    animation-delay: 360ms;
+  }
+
+  .stagger-7 {
+    animation-delay: 420ms;
+  }
+
+  .stagger-8 {
+    animation-delay: 480ms;
+  }
+
+  /* Hover lift micro-interaction */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px hsl(240 10% 10% / 0.1), 0 4px 10px -6px hsl(240 10% 10% / 0.1);
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(90deg,
+        hsl(var(--muted)) 25%,
+        hsl(var(--muted-foreground) / 0.08) 50%,
+        hsl(var(--muted)) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* Premium Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/20 rounded-full transition-all duration-300;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/40;
+}
+
+/* Thin scrollbar utility */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thumb-primary\/20::-webkit-scrollbar-thumb {
+  @apply bg-primary/20;
+}
+
+.scrollbar-thumb-primary\/40:hover::-webkit-scrollbar-thumb {
+  @apply bg-primary/40;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+/* Global Premium Utilities */
+.premium-shadow {
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.02);
+}
+
+.glass-morphism {
+  @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl;
+}
+
+.text-glow {
+  text-shadow: 0 0 15px rgba(var(--primary), 0.3);
+}
+
+/* Hide default browser password reveal icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* ============================================================================
+   RESPONSIVE & ZOOM-FRIENDLY UTILITIES
+   ============================================================================ */
+
+@layer utilities {
+  /* Fluid Typography - Scales with viewport and zoom */
+  .text-fluid-xs {
+    font-size: clamp(0.625rem, 0.6rem + 0.25vw, 0.75rem);
+  }
+  
+  .text-fluid-sm {
+    font-size: clamp(0.75rem, 0.7rem + 0.3vw, 0.875rem);
+  }
+  
+  .text-fluid-base {
+    font-size: clamp(0.875rem, 0.8rem + 0.5vw, 1rem);
+  }
+  
+  .text-fluid-lg {
+    font-size: clamp(1rem, 0.9rem + 0.6vw, 1.125rem);
+  }
+  
+  .text-fluid-xl {
+    font-size: clamp(1.125rem, 1rem + 0.8vw, 1.25rem);
+  }
+  
+  .text-fluid-2xl {
+    font-size: clamp(1.25rem, 1.1rem + 1vw, 1.5rem);
+  }
+
+  /* Responsive Containers - Adapt to zoom */
+  .container-responsive {
+    width: 100%;
+    max-width: min(100% - 2rem, 1400px);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(0.75rem, 2vw, 1.5rem);
+    padding-right: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  /* Flexible Sidebar Spacing */
+  .sidebar-offset {
+    padding-left: clamp(4rem, 16vw, 16rem);
+  }
+  
+  .sidebar-offset-collapsed {
+    padding-left: clamp(3rem, 4vw, 4rem);
+  }
+
+  /* Zoom-friendly spacing */
+  .space-responsive {
+    gap: clamp(0.5rem, 1vw, 1rem);
+  }
+
+  /* Prevent layout breaks */
+  .min-w-0 {
+    min-width: 0;
+  }
+  
+  .overflow-safe {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Responsive Grid */
+  .grid-responsive {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  /* Mobile-first breakpoint utilities */
+  @media (max-width: 640px) {
+    .mobile-stack {
+      flex-direction: column;
+    }
+    
+    .mobile-full {
+      width: 100%;
+    }
+    
+    .mobile-hide {
+      display: none;
+    }
+  }
+
+  /* Tablet adjustments */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .tablet-compact {
+      padding: 0.75rem;
+    }
+  }
+
+  /* High zoom support (>150%) */
+  @media (min-resolution: 1.5dppx) {
+    .zoom-adjust {
+      font-size: 0.95em;
+    }
+  }
+
+  /* Prevent horizontal scroll */
+  .no-scroll-x {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
+/* Global responsive fixes */
+html {
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  /* Better font rendering at all zoom levels */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Improve text rendering on zoom */
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  /* Prevent layout shift */
+  overflow-x: hidden;
+  /* Ensure proper scaling */
+  min-width: 320px;
+}
+
+/* Fix for inputs and buttons at different zoom levels */
+input, button, select, textarea {
+  /* Prevent zoom on focus (mobile) */
+  font-size: max(16px, 1rem);
+}
+
+/* Ensure images scale properly */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Table responsiveness */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+}
+
+/* Card responsiveness */
+.card-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Modal/Dialog responsiveness */
+@media (max-width: 640px) {
+  [role="dialog"] {
+    max-width: calc(100vw - 2rem) !important;
+    max-height: calc(100vh - 2rem) !important;
+  }
+}

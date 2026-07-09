@@ -1,0 +1,12 @@
+%% Flowchart for booking process
+flowchart TD
+    Start([Start]) --> AuthCheck{Authenticated?}
+    AuthCheck -- No --> Login[Redirect to Login]
+    AuthCheck -- Yes --> SelectSlot[Select Slot]
+    SelectSlot --> Confirm[Confirm Booking]
+    Confirm --> Payment{Payment Required?}
+    Payment -- Yes --> Pay[Process Payment]
+    Pay --> CreateBooking[Create Booking]
+    Payment -- No --> CreateBooking
+    CreateBooking --> Notify[Send Confirmation]
+    Notify --> End([End])

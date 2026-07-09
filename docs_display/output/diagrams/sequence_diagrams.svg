@@ -1,0 +1,18 @@
+
+%% Mermaid sequence diagram suggestions
+sequenceDiagram
+    participant Client
+    participant APIGW as API\ Gateway
+    participant Auth as Auth\ Service
+    participant Book as Booking\ Service
+    participant DB as Database
+
+    Client-&gt;&gt;APIGW: POST /api/v1/bookings
+    APIGW-&gt;&gt;Auth: Validate token
+    Auth--&gt;&gt;APIGW: 200 OK
+    APIGW-&gt;&gt;Book: CreateBooking(command)
+    Book-&gt;&gt;DB: INSERT booking
+    DB--&gt;&gt;Book: 201 Created
+    Book--&gt;&gt;APIGW: BookingCreated
+    APIGW--&gt;&gt;Client: 201 Created + body
+

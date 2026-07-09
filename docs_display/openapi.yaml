@@ -1,0 +1,59 @@
+openapi: 3.0.3
+info:
+  title: Product API
+  version: 1.0.0
+  description: Canonical API contract — fill endpoints and schemas.
+paths:
+  /api/v1/bookings:
+    post:
+      summary: Create a booking
+      tags: [Bookings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBooking'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+components:
+  schemas:
+    CreateBooking:
+      type: object
+      required: [user_id, slot_id]
+      properties:
+        user_id:
+          type: string
+        slot_id:
+          type: string
+        metadata:
+          type: object
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
