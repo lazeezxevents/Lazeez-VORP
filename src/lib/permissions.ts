@@ -20,14 +20,6 @@ export const PERMISSIONS = {
         MANAGE: "mous.manage",
         APPROVE: "mous.approve",
     },
-    HR: {
-        VIEW_DASHBOARD: "hr.view",
-        MANAGE_TEAM: "team.manage",
-        MANAGE_DESIGNATIONS: "designations.manage",
-        MANAGE_ASSIGNMENTS: "assignments.manage",
-        MANAGE_DEPARTMENTS: "departments.manage",
-        MANAGE_ROLES: "roles.manage", // Admin only
-    },
     SETTINGS: {
         ACCESS: "settings.access",
     },

@@ -20,9 +20,7 @@ export function NotificationSettings() {
     issue_assignments: true,
     issue_updates: true,
     weekly_digest: false,
-    finance_alerts: true,
     delivery_updates: true,
-    hr_activity: true,
   });
 
   useEffect(() => {
@@ -34,9 +32,7 @@ export function NotificationSettings() {
         issue_assignments: preferences.issue_assignments,
         issue_updates: preferences.issue_updates,
         weekly_digest: preferences.weekly_digest,
-        finance_alerts: preferences.finance_alerts || false,
         delivery_updates: preferences.delivery_updates || false,
-        hr_activity: preferences.hr_activity || false,
       });
     }
   }, [preferences]);
@@ -197,22 +193,6 @@ export function NotificationSettings() {
               <div className="space-y-4 pl-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="finance_alerts">Finance & payouts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Real-time alerts for payment releases and ledger entries
-                    </p>
-                  </div>
-                  <Switch
-                    id="finance_alerts"
-                    checked={formData.finance_alerts}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, finance_alerts: checked })
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
                     <Label htmlFor="delivery_updates">Delivery & dispatch</Label>
                     <p className="text-sm text-muted-foreground">
                       Updates on rider assignments and delivery completions
@@ -223,22 +203,6 @@ export function NotificationSettings() {
                     checked={formData.delivery_updates}
                     onCheckedChange={(checked) =>
                       setFormData({ ...formData, delivery_updates: checked })
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="hr_activity">HR & team changes</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Notifications for org chart changes and performance reviews
-                    </p>
-                  </div>
-                  <Switch
-                    id="hr_activity"
-                    checked={formData.hr_activity}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hr_activity: checked })
                     }
                   />
                 </div>

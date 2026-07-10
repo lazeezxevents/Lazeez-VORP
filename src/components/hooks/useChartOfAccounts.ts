@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { auditLogService } from "@/components/finance/AuditLogService";
+// NOTE: Audit logging disabled as Finance module has been removed
+// import { auditLogService } from "@/components/finance/AuditLogService";
 import type { 
   Account, 
   CreateAccountInput, 
@@ -146,21 +147,21 @@ async function createAccount(input: CreateAccountInput): Promise<Account> {
     throw new Error(`Failed to create account: ${error.message}`);
   }
 
-  // Log audit entry for account creation
-  await auditLogService.logAuditEntry({
-    entityType: 'account',
-    entityId: data.id,
-    action: 'create',
-    oldValues: null,
-    newValues: {
-      code: data.code,
-      name: data.name,
-      type: data.type,
-      sub_type: data.sub_type,
-      currency: data.currency,
-      is_active: data.is_active,
-    },
-  });
+  // NOTE: Audit logging disabled as Finance module has been removed
+  // await auditLogService.logAuditEntry({
+  //   entityType: 'account',
+  //   entityId: data.id,
+  //   action: 'create',
+  //   oldValues: null,
+  //   newValues: {
+  //     code: data.code,
+  //     name: data.name,
+  //     type: data.type,
+  //     sub_type: data.sub_type,
+  //     currency: data.currency,
+  //     is_active: data.is_active,
+  //   },
+  // });
 
   return data;
 }
@@ -190,25 +191,26 @@ async function updateAccount(id: string, input: UpdateAccountInput): Promise<Acc
     throw new Error(`Failed to update account: ${error.message}`);
   }
 
+  // NOTE: Audit logging disabled as Finance module has been removed
   // Log audit entry for account update
   if (oldAccount) {
-    await auditLogService.logAuditEntry({
-      entityType: 'account',
-      entityId: id,
-      action: 'update',
-      oldValues: {
-        name: oldAccount.name,
-        sub_type: oldAccount.sub_type,
-        parent_account_id: oldAccount.parent_account_id,
-        is_active: oldAccount.is_active,
-      },
-      newValues: {
-        name: data.name,
-        sub_type: data.sub_type,
-        parent_account_id: data.parent_account_id,
-        is_active: data.is_active,
-      },
-    });
+    // await auditLogService.logAuditEntry({
+    //   entityType: 'account',
+    //   entityId: id,
+    //   action: 'update',
+    //   oldValues: {
+    //     name: oldAccount.name,
+    //     sub_type: oldAccount.sub_type,
+    //     parent_account_id: oldAccount.parent_account_id,
+    //     is_active: oldAccount.is_active,
+    //   },
+    //   newValues: {
+    //     name: data.name,
+    //     sub_type: data.sub_type,
+    //     parent_account_id: data.parent_account_id,
+    //     is_active: data.is_active,
+    //   },
+    // });
   }
 
   return data;
@@ -232,20 +234,21 @@ async function deleteAccount(id: string): Promise<void> {
     throw new Error(`Failed to delete account: ${error.message}`);
   }
 
+  // NOTE: Audit logging disabled as Finance module has been removed
   // Log audit entry for account deletion
   if (account) {
-    await auditLogService.logAuditEntry({
-      entityType: 'account',
-      entityId: id,
-      action: 'delete',
-      oldValues: {
-        code: account.code,
-        name: account.name,
-        type: account.type,
-        balance: account.balance,
-      },
-      newValues: null,
-    });
+    // await auditLogService.logAuditEntry({
+    //   entityType: 'account',
+    //   entityId: id,
+    //   action: 'delete',
+    //   oldValues: {
+    //     code: account.code,
+    //     name: account.name,
+    //     type: account.type,
+    //     balance: account.balance,
+    //   },
+    //   newValues: null,
+    // });
   }
 }
 

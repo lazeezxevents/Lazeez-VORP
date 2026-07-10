@@ -297,7 +297,7 @@ export function EnhancedGlobalSearch({ open, onOpenChange }: EnhancedGlobalSearc
                   icon={Users}
                   title={team.name}
                   subtitle={team.department?.name || "No department"}
-                  onClick={() => { navigate("/hr-performance"); onOpenChange(false); }}
+                  onClick={() => { onOpenChange(false); }}
                 />
               ))}
             </motion.div>
@@ -314,7 +314,7 @@ export function EnhancedGlobalSearch({ open, onOpenChange }: EnhancedGlobalSearc
                   icon={Building}
                   title={dept.name}
                   subtitle={`${dept.employee_count || 0} employees`}
-                  onClick={() => { navigate("/hr-performance"); onOpenChange(false); }}
+                  onClick={() => { onOpenChange(false); }}
                 />
               ))}
             </motion.div>

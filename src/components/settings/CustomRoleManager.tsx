@@ -74,31 +74,6 @@ const PERMISSION_CATEGORIES = [
         ]
     },
     {
-        module: "hr",
-        label: "HR & Performance",
-        permissions: [
-            { slug: "hr.view", name: "View HR Dashboard", description: "Access HR analytics" },
-            { slug: "hr.manage", name: "Manage HR Settings", description: "Modify overall HR structure" },
-            { slug: "hr.orgchart", name: "View Org Chart", description: "Access organizational visualization" },
-            { slug: "hr.intelligence", name: "View AI Insights", description: "Access employee behavioral analytics" },
-            { slug: "team.manage", name: "Manage Team", description: "Manage employees and roles" },
-            { slug: "designations.manage", name: "Manage Designations", description: "Create/delete designations" },
-            { slug: "assignments.manage", name: "Assign Vendors", description: "Manage vendor assignments" },
-            { slug: "departments.manage", name: "Manage Departments", description: "Create departments" },
-            { slug: "audit.assign", name: "Assign Audit Logs", description: "Manage log visibility board" },
-        ]
-    },
-    {
-        module: "finance",
-        label: "Finance Module",
-        permissions: [
-            { slug: "finance.view", name: "View Finance", description: "Access financial dashboards" },
-            { slug: "finance.manage", name: "Manage Accounting", description: "Modify ledgers and transactions" },
-            { slug: "finance.payouts", name: "Process Payouts", description: "Approve rider/vendor payments" },
-            { slug: "finance.reports", name: "Financial Reports", description: "Generate P&L and cashflow" },
-        ]
-    },
-    {
         module: "delivery",
         label: "Delivery & Logistics",
         permissions: [

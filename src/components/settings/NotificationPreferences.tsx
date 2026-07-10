@@ -182,8 +182,6 @@ export default function NotificationPreferences() {
           </CardHeader>
           <CardContent className="space-y-4">
             {[
-              { key: 'hr', label: 'HR & Performance', icon: Settings, description: 'Employee updates, appraisals, attendance' },
-              { key: 'finance', label: 'Finance & Payments', icon: Zap, description: 'Payment alerts, financial updates' },
               { key: 'system', label: 'System Alerts', icon: Bell, description: 'System maintenance, security alerts' },
               { key: 'project', label: 'Project Updates', icon: Clock, description: 'Task assignments, project milestones' },
             ].map((category) => {
@@ -202,8 +200,8 @@ export default function NotificationPreferences() {
                     </div>
                   </div>
                   <Switch
-                    checked={true} // All enabled by default
-                    onCheckedChange={() => {}} // Placeholder
+                    checked={true}
+                    onCheckedChange={() => {}}
                   />
                 </div>
               );

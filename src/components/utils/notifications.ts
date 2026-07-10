@@ -73,25 +73,3 @@ export async function notifyRolePromotion(userId: string, fromRole: string, toRo
     actionUrl: '/dashboard',
   });
 }
-
-export async function notifyHRInvitationSent(hrUserId: string, employeeEmail: string) {
-  return createNotification({
-    userId: hrUserId,
-    type: 'info',
-    category: 'hr',
-    title: 'Invitation Sent',
-    message: `Employee invitation sent to ${employeeEmail}`,
-    actionUrl: '/invitations',
-  });
-}
-
-export async function notifyHRPasswordSetupComplete(hrUserId: string, employeeName: string) {
-  return createNotification({
-    userId: hrUserId,
-    type: 'success',
-    category: 'hr',
-    title: 'Employee Onboarded',
-    message: `${employeeName} has completed their account setup`,
-    actionUrl: '/invitations',
-  });
-}

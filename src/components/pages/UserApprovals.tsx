@@ -162,16 +162,7 @@ export default function UserApprovals() {
 
     const approveMutation = useMutation({
         mutationFn: async ({ userId, role, designation, managerId }: { userId: string; role: string; designation?: string; managerId?: string }) => {
-            // Check if user came from invitation (has hr_approved_by set)
-            const { data: userProfile } = await supabase
-                .from("profiles")
-                .select("hr_approved_by, hr_approved_at")
-                .eq("id", userId)
-                .single();
-            
-            const isInvitationBased = userProfile?.hr_approved_by != null;
-            
-            // Update profile with approval and designation
+            // Update profile with admin approval only
             const profileUpdates: any = {
                 is_approved: true,
                 approved_by: user?.id,
@@ -179,21 +170,18 @@ export default function UserApprovals() {
                 admin_approved_by: user?.id,
                 admin_approved_at: new Date().toISOString(),
             };
-            
-            // If invitation-based, HR approval is already set
-            // If self-signup, we need to set HR approval as well (admin acts as HR)
-            if (!isInvitationBased) {
-                profileUpdates.hr_approved_by = user?.id;
-                profileUpdates.hr_approved_at = new Date().toISOString();
-            }
 
             if (managerId && managerId !== "none") {
                 profileUpdates.manager_id = managerId;
             }
 
-            // If designation is provided, set designation_id
             if (designation && designation !== "") {
                 profileUpdates.designation_id = designation;
+            }
+            
+            // Add department field if available
+            if (selectedUser?.department) {
+                profileUpdates.department = selectedUser.department;
             }
 
             const { error: profileError } = await supabase
@@ -231,13 +219,12 @@ export default function UserApprovals() {
                 role, 
                 designation,
                 manager_id: managerId,
-                approved_by: user?.id 
+                admin_approved_by: user?.id 
             });
 
-            // Send notifications
+            // Send notification of approval
             await notifyUserApproved(userId);
             
-            // If designation is assigned, notify about that too
             if (designation && designation !== "") {
                 const designationData = customRoles.find(r => r.id === designation);
                 if (designationData) {
@@ -537,13 +524,7 @@ export default function UserApprovals() {
                                                             </div>
                                                             <div className="w-2 h-0.5 bg-border" />
                                                             
-                                                            {/* Step 3: HR Approval - Pending */}
-                                                            <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center">
-                                                                <Users className="w-2.5 h-2.5 text-muted-foreground" />
-                                                            </div>
-                                                            <div className="w-2 h-0.5 bg-border" />
-                                                            
-                                                            {/* Step 4: Full Access - Pending */}
+                                                            {/* Step 3: Full Access - Pending */}
                                                             <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center">
                                                                 <Shield className="w-2.5 h-2.5 text-muted-foreground" />
                                                             </div>
@@ -663,20 +644,14 @@ export default function UserApprovals() {
                                                             <div className="w-4 h-4 rounded-full bg-emerald-500/10 border border-emerald-500 flex items-center justify-center">
                                                                 <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
                                                             </div>
-                                                            <div className="w-2 h-0.5 bg-primary/30" />
+                                                            <div className="w-2 h-0.5 bg-emerald-500/30" />
                                                             
-                                                            {/* Step 3: HR Approval - Current step */}
-                                                            <div className="w-4 h-4 rounded-full bg-primary/10 border border-primary flex items-center justify-center">
-                                                                <Clock className="w-2.5 h-2.5 text-primary" />
-                                                            </div>
-                                                            <div className="w-2 h-0.5 bg-border" />
-                                                            
-                                                            {/* Step 4: Full Access - Pending */}
-                                                            <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center">
-                                                                <Shield className="w-2.5 h-2.5 text-muted-foreground" />
+                                                            {/* Step 3: Full Access - Completed */}
+                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/10 border border-emerald-500 flex items-center justify-center">
+                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
                                                             </div>
                                                         </div>
-                                                        <p className="text-[10px] text-muted-foreground mt-1">HR approval pending</p>
+                                                        <p className="text-[10px] text-emerald-500 mt-1">Approved & Active</p>
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">
                                                         {u.approved_at
@@ -788,25 +763,7 @@ export default function UserApprovals() {
                             </div>
                             <div className="h-0.5 flex-1 bg-border" />
                             
-                            {/* Step 3: Internal Audit */}
-                            <div className="flex flex-col items-center flex-1">
-                                <div className="w-8 h-8 rounded-full bg-muted border-2 border-border flex items-center justify-center mb-1">
-                                    <Clock className="w-4 h-4 text-muted-foreground" />
-                                </div>
-                                <span className="text-[10px] font-medium text-center">Internal audit</span>
-                            </div>
-                            <div className="h-0.5 flex-1 bg-border" />
-                            
-                            {/* Step 4: HR Approval */}
-                            <div className="flex flex-col items-center flex-1">
-                                <div className="w-8 h-8 rounded-full bg-muted border-2 border-border flex items-center justify-center mb-1">
-                                    <Users className="w-4 h-4 text-muted-foreground" />
-                                </div>
-                                <span className="text-[10px] font-medium text-center">HR approval</span>
-                            </div>
-                            <div className="h-0.5 flex-1 bg-border" />
-                            
-                            {/* Step 5: Ecosystem Access */}
+                            {/* Step 3: Full Access */}
                             <div className="flex flex-col items-center flex-1">
                                 <div className="w-8 h-8 rounded-full bg-muted border-2 border-border flex items-center justify-center mb-1">
                                     <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
@@ -815,7 +772,7 @@ export default function UserApprovals() {
                             </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-3 text-center">
-                            This action completes admin approval. HR approval will be required before full system access.
+                            Admin approval grants full system access. Users will be active immediately upon approval.
                         </p>
                     </div>
                     

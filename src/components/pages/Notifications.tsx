@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { DiagnosticDialog } from "@/components/hr/DiagnosticDialog";
 import { useNotifications, Notification as NotificationType } from "@/hooks/useNotifications";
 import { motion, AnimatePresence } from "framer-motion";
 import { playSound } from "@/components/utils/soundEffects";
@@ -38,12 +37,9 @@ const categoryIcons: Record<string, React.ElementType> = {
   system: Bell,
   performance: BarChart3,
   project: Building2,
-  finance: DollarSign,
-  delivery: AlertTriangle,
   attendance: Clock,
   leave: Calendar,
   appraisal: BarChart3,
-  hr: Building2,
 };
 
 const categoryColors: Record<string, string> = {
@@ -54,12 +50,9 @@ const categoryColors: Record<string, string> = {
   system: "bg-slate-500/10 text-slate-500 border-slate-500/20",
   performance: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   project: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
-  finance: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
-  delivery: "bg-orange-500/10 text-orange-500 border-orange-500/20",
   attendance: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
   leave: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   appraisal: "bg-violet-500/10 text-violet-500 border-violet-500/20",
-  hr: "bg-blue-500/10 text-blue-500 border-blue-500/20",
 };
 
 const categoryLabels: Record<string, string> = {
@@ -68,12 +61,9 @@ const categoryLabels: Record<string, string> = {
   payment: "Payments",
   performance: "Performance",
   project: "Projects",
-  finance: "Finance",
-  delivery: "Delivery",
   attendance: "Attendance",
   leave: "Leave",
   appraisal: "Appraisals",
-  hr: "HR Operations"
 };
 
 const typeStyles: Record<string, string> = {
@@ -104,7 +94,6 @@ export default function Notifications() {
   const { isAdmin, isStaff } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [diagnosticDialogOpen, setDiagnosticDialogOpen] = useState(false);
   const [showRead, setShowRead] = useState(true);
   const navigate = useNavigate();
 
@@ -235,10 +224,6 @@ export default function Notifications() {
         {/* Premium Category Statistics Strip - Horizontal Scrollable */}
         <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
           {Object.entries(categoryCounts)
-            .filter(([cat]) => {
-              if (cat === "finance" || cat === "delivery") return isStaff || isAdmin;
-              return true;
-            })
             .map(([category, data]) => {
               const Icon = categoryIcons[category];
               const colors = categoryColors[category];
@@ -341,16 +326,6 @@ export default function Notifications() {
               className="rounded-xl border-amber-500/20 text-amber-600 hover:bg-amber-50 font-bold h-8 md:h-9"
             >
               <Archive className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDiagnosticDialogOpen(true)}
-              className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 font-bold h-8 md:h-9 flex-1 md:flex-initial"
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Diagnostics</span>
-              <span className="sm:hidden">Diag</span>
             </Button>
             <Button 
               variant="outline" 
@@ -482,10 +457,6 @@ export default function Notifications() {
             </motion.div>
           ) : (
             Object.entries(categoryCounts)
-              .filter(([cat]) => {
-                if (cat === "finance" || cat === "delivery") return isStaff || isAdmin;
-                return true;
-              })
               .map(([category, data]) => {
                 const Icon = categoryIcons[category];
                 const isExpanded = expandedCategories.has(category);
@@ -717,11 +688,6 @@ export default function Notifications() {
           )}
         </div>
       </div>
-      
-      <DiagnosticDialog
-        open={diagnosticDialogOpen}
-        onOpenChange={setDiagnosticDialogOpen}
-      />
     </DashboardLayout>
   );
 }

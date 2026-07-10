@@ -1,6 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { type AuditLogFilter, type AuditLogRecord } from "@/components/finance/AuditLogService";
+
+// =====================================================
+// Types
+// =====================================================
+
+export interface AuditLogFilter {
+  entity_type?: string;
+  entity_id?: string;
+  action?: string;
+  user_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface AuditLogRecord {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  old_values?: any;
+  new_values?: any;
+  user_id: string | null;
+  created_at: string;
+  ip_address?: string;
+}
 
 // Re-export types for convenience
 export type { AuditLogFilter, AuditLogRecord };

@@ -22,15 +22,12 @@ import Notifications from "@/pages/Notifications";
 import Calendar from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 import UserApprovals from "@/pages/UserApprovals";
-import HRPerformance from "@/components/pages/HRPerformance";
 import ProjectBoard from "@/components/projects/ProjectBoard";
 import ApprovalPending from "@/pages/ApprovalPending";
 import SetPassword from "@/pages/SetPassword";
-import InvitationManagement from "@/components/hr/InvitationManagement";
 import Archive from "@/pages/Archive";
 import Error500 from "@/pages/Error500";
 import Error403 from "@/pages/Error403";
-import Finance from "@/pages/Finance";
 import Communication from "@/pages/Communication";
 import { DashboardLayout } from "@/components/layout";
 import { Component, ErrorInfo, ReactNode } from "react";
@@ -181,14 +178,6 @@ const App = () => {
                     }
                   />
                   <Route
-                    path="/hr-performance"
-                    element={
-                      <ProtectedRoute requireStaff>
-                        <HRPerformance />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
                     path="/projects"
                     element={
                       <ProtectedRoute>
@@ -213,28 +202,10 @@ const App = () => {
                     }
                   />
                   <Route
-                    path="/invitations"
-                    element={
-                      <ProtectedRoute requireStaff>
-                        <DashboardLayout>
-                          <InvitationManagement />
-                        </DashboardLayout>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
                     path="/archive"
                     element={
                       <ProtectedRoute>
                         <Archive />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/finance"
-                    element={
-                      <ProtectedRoute requireStaff>
-                        <Finance />
                       </ProtectedRoute>
                     }
                   />

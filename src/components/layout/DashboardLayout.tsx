@@ -44,13 +44,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const navigate = useNavigate();
-  const { user, profile, signOut, isAdmin, isStaff, isHR, isManager } = useAuth();
+  const { user, profile, signOut, isAdmin, isStaff, isManager } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Check if the user is a manager or leader
-  const canSeeInternalLogs = isAdmin || isStaff || isHR || isManager;
+  const canSeeInternalLogs = isAdmin || isStaff || isManager;
 
   const { data: vendors } = useVendors();
   const { data: issues } = useIssues();
@@ -74,25 +74,6 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
     },
   });
 
-  // Fetch teams (HR)
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async () => {
-      const { data } = await supabase.from("teams").select("*, department:departments(name)").order("name");
-      return data || [];
-    },
-    enabled: isHR || isAdmin,
-  });
-
-  // Fetch departments
-  const { data: departments } = useQuery({
-    queryKey: ["departments"],
-    queryFn: async () => {
-      const { data } = await supabase.from("departments").select("*").order("name");
-      return data || [];
-    },
-    enabled: isHR || isAdmin,
-  });
 
   // Filter data based on search query
   const filteredVendors = useMemo(() => {
@@ -134,19 +115,6 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
     );
   }, [tasks, searchQuery]);
 
-  const filteredTeams = useMemo(() => {
-    if (!teams || !searchQuery) return teams || [];
-    return teams.filter((t: any) => 
-      t.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [teams, searchQuery]);
-
-  const filteredDepartments = useMemo(() => {
-    if (!departments || !searchQuery) return departments || [];
-    return departments.filter((d: any) => 
-      d.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [departments, searchQuery]);
 
   // Fetch pending users count for the badge
   const { data: pendingUsersCount = 0 } = useQuery({
@@ -820,105 +788,6 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
                 </CommandGroup>
               )}
 
-              {/* Teams Section (HR/Admin only) */}
-              {(isHR || isAdmin) && filteredTeams && filteredTeams.length > 0 && (
-                <CommandGroup heading={`Teams (${filteredTeams.length})`}>
-                  <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      visible: {
-                        transition: {
-                          staggerChildren: 0.03
-                        }
-                      }
-                    }}
-                  >
-                    {filteredTeams.map((team: any) => (
-                      <motion.div
-                        key={team.id}
-                        variants={{
-                          hidden: { opacity: 0, x: -10 },
-                          visible: { opacity: 1, x: 0 }
-                        }}
-                      >
-                        <CommandItem
-                          value={team.name}
-                          onSelect={() => {
-                            navigate("/hr-performance");
-                            setSearchOpen(false);
-                          }}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-all cursor-pointer group"
-                        >
-                          <motion.div 
-                            className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600 flex-shrink-0"
-                            whileHover={{ scale: 1.1, rotate: 5 }}
-                            transition={{ type: "spring", stiffness: 400 }}
-                          >
-                            <Users className="w-5 h-5" />
-                          </motion.div>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-semibold truncate">{team.name}</span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {team.department?.name || "No department"}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </CommandGroup>
-              )}
-
-              {/* Departments Section (HR/Admin only) */}
-              {(isHR || isAdmin) && filteredDepartments && filteredDepartments.length > 0 && (
-                <CommandGroup heading={`Departments (${filteredDepartments.length})`}>
-                  <motion.div
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      visible: {
-                        transition: {
-                          staggerChildren: 0.03
-                        }
-                      }
-                    }}
-                  >
-                    {filteredDepartments.map((dept: any) => (
-                      <motion.div
-                        key={dept.id}
-                        variants={{
-                          hidden: { opacity: 0, x: -10 },
-                          visible: { opacity: 1, x: 0 }
-                        }}
-                      >
-                        <CommandItem
-                          value={dept.name}
-                          onSelect={() => {
-                            navigate("/hr-performance");
-                            setSearchOpen(false);
-                          }}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-all cursor-pointer group"
-                        >
-                          <motion.div 
-                            className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600 flex-shrink-0"
-                            whileHover={{ scale: 1.1, rotate: -5 }}
-                            transition={{ type: "spring", stiffness: 400 }}
-                          >
-                            <Building className="w-5 h-5" />
-                          </motion.div>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-semibold truncate">{dept.name}</span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {dept.employee_count || 0} employees
-                            </span>
-                          </div>
-                        </CommandItem>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </CommandGroup>
-              )}
 
               {/* System Navigation */}
               <CommandGroup heading="System navigation">

@@ -48,8 +48,6 @@ const navItems = [
   { icon: CalendarDays, label: "Calendar", href: "/calendar", permission: "calendar.view" },
   { icon: BarChart3, label: "Analytics", href: "/analytics", permission: "analytics.view" },
   { icon: Briefcase, label: "Projects", href: "/projects", permission: "projects.view" },
-  { icon: DollarSign, label: "Finance", href: "/finance", permission: "finance.view" },
-  { icon: TrendingUp, label: "HR / Performance", href: "/hr-performance", permission: "hr.view" },
   { icon: History, label: "Audit Logs", href: "/audit-logs", permission: "audit.view" },
   { icon: Bell, label: "Notifications", href: "/notifications" },
 ];

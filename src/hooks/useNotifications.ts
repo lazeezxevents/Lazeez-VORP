@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 export interface Notification {
   id: string;
   type: "info" | "success" | "warning" | "error";
-  category: "performance" | "project" | "finance" | "delivery" | "system" | "mou" | "issue" | "payment" | "vendor" | "attendance" | "leave" | "appraisal" | "hr";
+  category: "performance" | "project" | "finance" | "delivery" | "system" | "mou" | "issue" | "payment" | "vendor" | "attendance" | "leave" | "appraisal";
   title: string;
   message: string;
   read: boolean;
@@ -69,9 +69,6 @@ function mapEntityTypeToCategory(entityType: string): Notification["category"] {
       return "attendance";
     case "leave_request":
       return "leave";
-    case "hr_notification":
-    case "employee_history":
-      return "hr";
     default:
       return "system";
   }
@@ -304,30 +301,7 @@ export function useNotifications() {
         });
       });
 
-      // 4. HR Notifications (From DB)
-      const { data: hrNotifs } = await (supabase
-        .from("hr_notifications" as any) as any)
-        .select("*")
-        .eq("target_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      (hrNotifs || []).forEach((n: any) => {
-          allNotifications.push({
-              id: `hr-${n.id}`,
-              type: n.notification_type === "urgent" ? "error" : n.notification_type === "warning" ? "warning" : n.notification_type === "success" ? "success" : "info",
-              category: mapEntityTypeToCategory(n.entity_type),
-              title: n.title,
-              message: n.message,
-              read: n.is_read || readItems.has(`hr-${n.id}`),
-              entity_type: n.entity_type,
-              entity_id: n.entity_id,
-              action_url: n.action_url || "/hr-performance",
-              created_at: n.created_at,
-          });
-      });
-
-      // 5. Audit Logs (System Activity) - Staff/Admin Only
+      // 4. Audit Logs (System Activity) - Staff/Admin Only
       if (isStaff || isAdmin) {
         const { data: logs } = await supabase
           .from("audit_logs")

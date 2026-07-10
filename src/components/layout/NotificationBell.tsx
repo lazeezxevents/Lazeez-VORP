@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { DiagnosticDialog } from "@/components/hr/DiagnosticDialog";
 import { useSystemHealth } from "@/hooks/useSystemHealth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationUIPreferences } from "@/hooks/useNotificationUIPreferences";

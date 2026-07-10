@@ -12,9 +12,7 @@ export interface NotificationPreferences {
   issue_assignments: boolean;
   issue_updates: boolean;
   weekly_digest: boolean;
-  finance_alerts: boolean;
   delivery_updates: boolean;
-  hr_activity: boolean;
   created_at: string;
   updated_at: string;
 }
