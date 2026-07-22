@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import lazeezLogo from "@/assets/lazeez-logo.png";
-import { notifyHRPasswordSetupComplete, notifyDesignationAssigned } from "@/components/utils/notifications";
+import { notifyDesignationAssigned } from "@/components/utils/notifications";
 
 const PasswordStrengthIndicator = ({ password }: { password: string }) => {
   const [strength, setStrength] = useState(0);
@@ -222,12 +222,8 @@ export default function SetPassword() {
 
       if (profileError) console.error("Failed to update profile:", profileError);
 
-      // Send notifications
-      if (tokenData.invited_by) {
-        // Notify HR staff that employee completed setup
-        const employeeName = tokenData.full_name || tokenData.email.split('@')[0];
-        await notifyHRPasswordSetupComplete(tokenData.invited_by, employeeName);
-      }
+      // Send notifications to user
+      // NOTE: HR notification system has been removed
 
       // Notify employee about their designation
       if (tokenData.designation?.display_name) {
