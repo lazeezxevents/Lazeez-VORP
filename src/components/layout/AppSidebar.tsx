@@ -43,7 +43,6 @@ const navItems = [
   { icon: Building2, label: "Vendors", href: "/vendors", permission: "vendors.view" },
   { icon: Ticket, label: "Issues", href: "/issues", permission: "issues.view" },
   { icon: FileText, label: "MOUs", href: "/mous", permission: "mous.view" },
-  { icon: FolderLock, label: "MOU Vault", href: "/mou-vault", permission: "mous.vault" },
   { icon: MessageSquare, label: "Communication", href: "/communication" },
   { icon: CalendarDays, label: "Calendar", href: "/calendar", permission: "calendar.view" },
   { icon: BarChart3, label: "Analytics", href: "/analytics", permission: "analytics.view" },

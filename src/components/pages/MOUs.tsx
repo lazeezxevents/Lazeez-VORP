@@ -18,13 +18,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Search, MoreHorizontal, FileText, Download,
-  CheckCircle, PenLine, Trash2, Send, Paperclip, History, Diff
+  CheckCircle, PenLine, Trash2, Send, Paperclip, History, Diff, FolderLock, LayoutList
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMOUs } from "@/components/hooks/useMOUs";
 import { useAuth } from "@/contexts/AuthContext";
 import { MOUCreationWizard } from "@/components/mous/wizard/MOUCreationWizard";
 import { MOUForm } from "@/components/mous/MOUForm";
 import { VendorCreationChoice } from "@/components/vendors/VendorCreationChoice";
+import MOUVaultContent from "@/components/pages/MOUVaultContent";
 import { MOUVersionHistory } from "@/components/mous/MOUVersionHistory";
 import { MOUVersionComparison } from "@/components/mous/MOUVersionComparison";
 import { generateMOUPDF } from "@/utils/pdfGenerator";
@@ -111,170 +113,187 @@ export default function MOUs() {
         }}
       />
 
-      <div className="space-y-6 animate-fade-in">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((stat, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <Tabs defaultValue="list" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="list" className="gap-2">
+            <LayoutList className="w-4 h-4" />
+            MOUs Management
+          </TabsTrigger>
+          <TabsTrigger value="vault" className="gap-2">
+            <FolderLock className="w-4 h-4" />
+            MOU Vault & AI Extractions
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search MOUs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          {isStaff && (
-            <Button onClick={() => setChoiceOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New MOU
-            </Button>
-          )}
-        </div>
-
-        {/* Table */}
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-6 space-y-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-[200px]" />
-                      <Skeleton className="h-3 w-[150px]" />
-                    </div>
+        <TabsContent value="list" className="space-y-6 animate-fade-in">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {stats.map((stat, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                    <stat.icon className="w-5 h-5 text-primary-foreground" />
                   </div>
-                ))}
-              </div>
-            ) : filteredMOUs.length === 0 ? (
-              <div className="p-12 text-center">
-                <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No MOUs found</h3>
-                <p className="text-muted-foreground mt-1">Create your first MOU to get started</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Document</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMOUs.map((mou) => (
-                    <TableRow key={mou.id}>
-                      <TableCell className="font-medium">{mou.title}</TableCell>
-                      <TableCell>{(mou.vendor as { name: string } | null)?.name || "-"}</TableCell>
-                      <TableCell>
-                        {mou.start_date && mou.end_date
-                          ? `${format(new Date(mou.start_date), "MMM d, yyyy")} - ${format(new Date(mou.end_date), "MMM d, yyyy")}`
-                          : "-"
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[mou.status]}>
-                          {mou.status.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {mou.document_url ? (
-                          <Paperclip className="w-4 h-4 text-success" />
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(mou.created_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setHistoryMOU({ id: mou.id, title: mou.title })}>
-                              <History className="w-4 h-4 mr-2" />
-                              View History
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setCompareMOU({ id: mou.id, title: mou.title })}>
-                              <Diff className="w-4 h-4 mr-2" />
-                              Compare Versions
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExportPDF(mou)}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Export PDF
-                            </DropdownMenuItem>
-                            {isStaff && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleEdit(mou)}>
-                                  <PenLine className="w-4 h-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                {mou.status === "draft" && (
-                                  <DropdownMenuItem onClick={() => handleSubmitForReview(mou.id)}>
-                                    <Send className="w-4 h-4 mr-2" />
-                                    Submit for Review
-                                  </DropdownMenuItem>
-                                )}
-                                {mou.status === "pending_review" && isAdmin && (
-                                  <DropdownMenuItem onClick={() => approveMOU.mutateAsync(mou.id)}>
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                )}
-                                {mou.status === "approved" && (
-                                  <DropdownMenuItem onClick={() => signMOU.mutateAsync(mou.id)}>
-                                    <PenLine className="w-4 h-4 mr-2" />
-                                    Mark as Signed
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                {isAdmin && (
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => setDeleteId(mou.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search MOUs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {isStaff && (
+              <Button onClick={() => setChoiceOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New MOU
+              </Button>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Table */}
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="p-6 space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-12 rounded" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-3 w-[150px]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredMOUs.length === 0 ? (
+                <div className="p-12 text-center">
+                  <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground">No MOUs found</h3>
+                  <p className="text-muted-foreground mt-1">Create your first MOU to get started</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Document</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMOUs.map((mou) => (
+                      <TableRow key={mou.id}>
+                        <TableCell className="font-medium">{mou.title}</TableCell>
+                        <TableCell>{(mou.vendor as { name: string } | null)?.name || "-"}</TableCell>
+                        <TableCell>
+                          {mou.start_date && mou.end_date
+                            ? `${format(new Date(mou.start_date), "MMM d, yyyy")} - ${format(new Date(mou.end_date), "MMM d, yyyy")}`
+                            : "-"
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[mou.status]}>
+                            {mou.status.replace("_", " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {mou.document_url ? (
+                            <Paperclip className="w-4 h-4 text-success" />
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(mou.created_at), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setHistoryMOU({ id: mou.id, title: mou.title })}>
+                                <History className="w-4 h-4 mr-2" />
+                                View History
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setCompareMOU({ id: mou.id, title: mou.title })}>
+                                <Diff className="w-4 h-4 mr-2" />
+                                Compare Versions
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleExportPDF(mou)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Export PDF
+                              </DropdownMenuItem>
+                              {isStaff && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEdit(mou)}>
+                                    <PenLine className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  {mou.status === "draft" && (
+                                    <DropdownMenuItem onClick={() => handleSubmitForReview(mou.id)}>
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Submit for Review
+                                    </DropdownMenuItem>
+                                  )}
+                                  {mou.status === "pending_review" && isAdmin && (
+                                    <DropdownMenuItem onClick={() => approveMOU.mutateAsync(mou.id)}>
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                  )}
+                                  {mou.status === "approved" && (
+                                    <DropdownMenuItem onClick={() => signMOU.mutateAsync(mou.id)}>
+                                      <PenLine className="w-4 h-4 mr-2" />
+                                      Mark as Signed
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  {isAdmin && (
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => setDeleteId(mou.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vault" className="space-y-6 animate-fade-in">
+          <MOUVaultContent />
+        </TabsContent>
+      </Tabs>
 
       {/* Form Dialog */}
       <MOUForm
