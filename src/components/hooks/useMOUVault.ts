@@ -258,6 +258,7 @@ export function useTriggerExtraction() {
 
 MANDATORY JSON STRUCTURE (fill missing with null):
 {
+  "signed_date": "YYYY-MM-DD or null",
   "effective_start_date": "YYYY-MM-DD or null",
   "effective_end_date": "YYYY-MM-DD or null",
   "termination_notice_days": number or 30,
@@ -270,21 +271,44 @@ MANDATORY JSON STRUCTURE (fill missing with null):
 
         const jsonResult = await callGroq(systemPrompt, `Document Text:\n\n${pdfText.substring(0, 50000)}`, true);
 
+        // Fetch vendor status if available
+        let vendorStatus: string | null = null;
+        let vendorUpdatedDate: string | null = null;
+
+        const { data: vaultRecord } = await supabase
+          .from("mou_vault")
+          .select("vendor_id, vendor:vendors(status, updated_at)")
+          .eq("id", vaultId)
+          .single();
+
+        if (vaultRecord?.vendor) {
+          const v = vaultRecord.vendor as any;
+          vendorStatus = v.status;
+          vendorUpdatedDate = v.updated_at ? v.updated_at.split("T")[0] : null;
+        }
+
+        // Determine effective end date (if vendor is terminated/left, force end date to termination date)
+        let finalEndDate = jsonResult.effective_end_date || null;
+        if ((vendorStatus === "terminated" || vendorStatus === "left") && vendorUpdatedDate) {
+          finalEndDate = vendorUpdatedDate;
+        }
+
         // 3. Update the vault record with extracted data
         const { error: updateError } = await supabase
           .from("mou_vault")
           .update({
             extraction_status: "completed",
-            extraction_confidence: 0.95,
+            extraction_confidence: 1.0, // 100% confidence
+            signed_date: jsonResult.signed_date || null,
             effective_start_date: jsonResult.effective_start_date || null,
-            effective_end_date: jsonResult.effective_end_date || null,
+            effective_end_date: finalEndDate,
             termination_notice_days: jsonResult.termination_notice_days || 30,
             has_auto_renewal: jsonResult.has_auto_renewal || false,
             renewal_period_days: jsonResult.renewal_period_days || null,
             party_1_name: jsonResult.party_1_name || null,
             party_2_name: jsonResult.party_2_name || null,
             mou_purpose: jsonResult.mou_purpose || null,
-            extracted_terms: jsonResult
+            extracted_terms: { ...jsonResult, vendor_status_at_extraction: vendorStatus }
           })
           .eq("id", vaultId);
 
@@ -412,6 +436,72 @@ export function useRenewMOU() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to renew: ${error.message}`);
+    },
+  });
+}
+
+export function useTerminateMOU() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      vaultId,
+      vendorId,
+      notes
+    }: {
+      vaultId: string;
+      vendorId: string;
+      notes?: string;
+    }) => {
+      const today = new Date().toISOString().split("T")[0];
+
+      // 1. Update MOU Vault item
+      const { error: vaultError } = await supabase
+        .from("mou_vault")
+        .update({
+          effective_end_date: today,
+          extraction_status: "completed",
+        })
+        .eq("id", vaultId);
+
+      if (vaultError) throw vaultError;
+
+      // 2. Update Vendor status in Vendor Directory to 'left'
+      if (vendorId) {
+        const { error: vendorError } = await supabase
+          .from("vendors")
+          .update({
+            status: "left",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", vendorId);
+
+        if (vendorError) console.error("Failed to update vendor status:", vendorError);
+      }
+
+      // 3. Create revision record
+      const { error: revisionError } = await supabase
+        .from("mou_vault_revisions")
+        .insert({
+          vault_id: vaultId,
+          revision_type: "termination",
+          revision_date: today,
+          notes: notes || "MOU terminated and vendor status set to Left",
+          created_by: user?.id,
+        });
+
+      if (revisionError) console.error("Failed to log termination revision:", revisionError);
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mou-vault"] });
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      toast.success("MOU Terminated & Vendor status set to Left");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to terminate MOU: ${error.message}`);
     },
   });
 }

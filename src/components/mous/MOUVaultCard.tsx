@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MOUVaultItem, useDeleteVaultItem, useTriggerExtraction } from "@/hooks/useMOUVault";
+import { MOUVaultItem, useDeleteVaultItem, useTriggerExtraction, useTerminateMOU } from "@/hooks/useMOUVault";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -49,8 +49,10 @@ interface MOUVaultCardProps {
 
 export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDetails, onViewDocument }: MOUVaultCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [terminateOpen, setTerminateOpen] = useState(false);
   const deleteItem = useDeleteVaultItem();
   const triggerExtraction = useTriggerExtraction();
+  const terminateMOU = useTerminateMOU();
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
   const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
@@ -111,6 +113,14 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
   const handleDelete = async () => {
     await deleteItem.mutateAsync(item.id);
     setDeleteOpen(false);
+  };
+
+  const handleTerminate = async () => {
+    await terminateMOU.mutateAsync({
+      vaultId: item.id,
+      vendorId: item.vendor_id,
+    });
+    setTerminateOpen(false);
   };
 
   const expirationStatus = getExpirationStatus();
@@ -177,6 +187,12 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
                   Download
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {item.effective_end_date && !isPast(new Date(item.effective_end_date)) && (
+                  <DropdownMenuItem onClick={() => setTerminateOpen(true)} className="text-warning">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Terminate MOU
+                  </DropdownMenuItem>
+                )}
                 {(item.extraction_status === "failed" || item.extraction_status === "processing") && (
                   <DropdownMenuItem onClick={handleRetryExtraction}>
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -268,6 +284,23 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
           </p>
         </CardContent>
       </Card>
+
+      <AlertDialog open={terminateOpen} onOpenChange={setTerminateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Terminate MOU?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the MOU as terminated today ({format(new Date(), "MMM d, yyyy")}) and set the vendor's status to <strong>Left</strong> in the Vendor Directory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTerminate} className="bg-warning text-warning-foreground">
+              Terminate & Mark Vendor Left
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
