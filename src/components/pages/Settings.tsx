@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Shield, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { UnifiedNotificationSettings } from "@/components/settings/UnifiedNotificationSettings";
 import { CommunicationSettings } from "@/components/settings/CommunicationSettings";
 import { CustomRoleManager as PermissionSettings } from "@/components/settings/CustomRoleManager";
 
@@ -42,7 +42,7 @@ export default function Settings() {
                     </TabsContent>
 
                     <TabsContent value="notifications">
-                        <NotificationSettings />
+                        <UnifiedNotificationSettings />
                     </TabsContent>
 
                     <TabsContent value="communication">
