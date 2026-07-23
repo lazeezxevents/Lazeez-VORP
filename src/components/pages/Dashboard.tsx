@@ -20,6 +20,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useSafiScore } from "@/hooks/useSafiScore";
+import { VendorCategoryPieChart } from "@/components/dashboard/charts/VendorCategoryPieChart";
+import { IssuesByPriorityChart } from "@/components/dashboard/charts/IssuesByPriorityChart";
+import { IssueStatusDonutChart } from "@/components/dashboard/charts/IssueStatusDonutChart";
+import { VendorOnboardingTrendChart } from "@/components/dashboard/charts/VendorOnboardingTrendChart";
 
 const priorityColors: Record<string, string> = {
   low: "bg-priority-low/10 text-priority-low border-priority-low/20",
@@ -340,6 +344,71 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Analytics Section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+          </div>
+
+          {/* Large Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="animate-fade-in">
+              <CardHeader>
+                <CardTitle>Issues by Priority</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {issuesLoading ? (
+                  <Skeleton className="h-[350px] w-full" />
+                ) : (
+                  <IssuesByPriorityChart issues={issues || []} isLoading={issuesLoading} />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="animate-fade-in" style={{ animationDelay: '80ms' }}>
+              <CardHeader>
+                <CardTitle>Vendor Onboarding Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorsLoading ? (
+                  <Skeleton className="h-[350px] w-full" />
+                ) : (
+                  <VendorOnboardingTrendChart vendors={vendors || []} isLoading={vendorsLoading} />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Small Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="animate-fade-in" style={{ animationDelay: '160ms' }}>
+              <CardHeader>
+                <CardTitle>Vendor Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorsLoading ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : (
+                  <VendorCategoryPieChart vendors={vendors || []} isLoading={vendorsLoading} />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="animate-fade-in" style={{ animationDelay: '240ms' }}>
+              <CardHeader>
+                <CardTitle>Issue Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {issuesLoading ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : (
+                  <IssueStatusDonutChart issues={issues || []} isLoading={issuesLoading} />
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </DashboardLayout>
