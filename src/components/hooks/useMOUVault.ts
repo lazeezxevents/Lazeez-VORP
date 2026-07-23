@@ -227,31 +227,31 @@ export function useTriggerExtraction() {
         .eq("id", vaultId);
 
       try {
-        // 1. Fetch PDF content securely via Supabase Storage
+        // 1. Fetch PDF content
         let pdfText = "";
+        let arrayBuffer: ArrayBuffer;
 
-        // Handle full URLs vs storage paths
-        if (documentUrl.includes('supabase.co')) {
+        // Try Supabase storage download first, then fall back to direct fetch
+        if (documentUrl.includes('supabase.co') && documentUrl.includes('/storage/v1/object/public/mou-vault/')) {
           const pathParts = documentUrl.split('/storage/v1/object/public/mou-vault/');
-          if (pathParts.length > 1) {
-            const filePath = pathParts[1];
-            const { data: fileBlob, error: downloadError } = await supabase.storage.from('mou-vault').download(filePath);
+          const filePath = decodeURIComponent(pathParts[1]);
+          const { data: fileBlob, error: downloadError } = await supabase.storage.from('mou-vault').download(filePath);
 
-            if (downloadError) throw downloadError;
-
-            const arrayBuffer = await fileBlob.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
-              const page = await pdf.getPage(i);
-              const textContent = await page.getTextContent();
-              const pageText = textContent.items.map((item: any) => item.str).join(" ");
-              pdfText += pageText + "\n";
-            }
-          } else {
-            throw new Error("Could not parse storage path from document URL.");
-          }
+          if (downloadError) throw downloadError;
+          arrayBuffer = await fileBlob.arrayBuffer();
         } else {
-          throw new Error("Only Supabase storage URLs are supported for auto-extraction.");
+          // Fallback: fetch the PDF directly from any accessible URL
+          const response = await fetch(documentUrl);
+          if (!response.ok) throw new Error(`Failed to fetch document: ${response.statusText}`);
+          arrayBuffer = await response.arrayBuffer();
+        }
+
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(" ");
+          pdfText += pageText + "\n";
         }
 
         // 2. Groq Extraction Call
