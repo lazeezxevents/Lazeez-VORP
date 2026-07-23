@@ -223,33 +223,42 @@ export default function MOUVaultContent() {
 
           {/* Grid with Branching Tree Support */}
           {filteredItems.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Group items by root parent or display standalone */}
+            <div className="space-y-6">
               {(() => {
-                // Find all daughter items
-                const daughterIds = new Set(filteredItems.filter(i => i.parent_vault_id).map(i => i.id));
-                
-                // Primary items to display on top level (standalone OR items that are NOT daughter of another item in current view, or the latest version)
-                const primaryItems = filteredItems.filter(item => {
-                  // If this item is a parent to others OR standalone, show it
-                  const hasDaughters = filteredItems.some(d => d.parent_vault_id === item.id);
-                  const isDaughter = !!item.parent_vault_id;
-                  return !isDaughter || hasDaughters;
+                // Build a map: parentId -> daughter items
+                const daughterMap = new Map<string, MOUVaultItem[]>();
+                filteredItems.forEach((item) => {
+                  if (item.parent_vault_id) {
+                    const existing = daughterMap.get(item.parent_vault_id) || [];
+                    existing.push(item);
+                    daughterMap.set(item.parent_vault_id, existing);
+                  }
                 });
 
-                return filteredItems.map((item) => {
-                  // Find all daughter versions linked to this item as parent
-                  const daughters = filteredItems.filter((d) => d.parent_vault_id === item.id);
-                  return (
-                    <MOUVaultCard
-                      key={item.id}
-                      item={item}
-                      daughters={daughters}
-                      onViewDetails={setSelectedItem}
-                      onViewDocument={setViewerItem}
-                    />
-                  );
-                });
+                // IDs that are daughters of some parent
+                const daughterIds = new Set(
+                  filteredItems.filter((i) => !!i.parent_vault_id).map((i) => i.id)
+                );
+
+                // Root items = items that are NOT a daughter of another item in the current view
+                const rootItems = filteredItems.filter((item) => !daughterIds.has(item.id));
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rootItems.map((item) => {
+                      const daughters = daughterMap.get(item.id) || [];
+                      return (
+                        <MOUVaultCard
+                          key={item.id}
+                          item={item}
+                          daughters={daughters}
+                          onViewDetails={setSelectedItem}
+                          onViewDocument={setViewerItem}
+                        />
+                      );
+                    })}
+                  </div>
+                );
               })()}
             </div>
           ) : (

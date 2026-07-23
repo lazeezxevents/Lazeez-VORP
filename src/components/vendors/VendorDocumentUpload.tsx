@@ -72,23 +72,35 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
     try {
       const fileExt = file.name.split(".").pop();
       const filePath = `vendor-docs/${vendorId}/${Date.now()}-${documentName}.${fileExt}`;
+      let finalFileUrl = "";
 
+      // Try uploading to mou-vault bucket
       const { error: uploadError } = await supabase.storage
         .from("mou-vault")
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("mou-vault")
-        .getPublicUrl(filePath);
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from("mou-vault")
+          .getPublicUrl(filePath);
+        finalFileUrl = urlData.publicUrl;
+      } else {
+        console.warn("Storage upload failed, falling back to inline data URL:", uploadError);
+        // Fallback: convert file to Data URL so it is stored directly in DB table
+        finalFileUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
       const { error: dbError } = await supabase
         .from("vendor_documents")
         .insert({
           vendor_id: vendorId,
           name: documentName,
-          file_url: urlData.publicUrl,
+          file_url: finalFileUrl,
           file_type: documentType,
           file_size: file.size,
           uploaded_by: user.id,
@@ -100,6 +112,7 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
       queryClient.invalidateQueries({ queryKey: ["vendor-documents", vendorId] });
       setOpen(false);
       setFile(null);
+      setPreviewUrl(null);
       setDocumentName("");
       setDocumentType("other");
       onUploadComplete?.();

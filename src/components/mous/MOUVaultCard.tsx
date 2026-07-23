@@ -12,7 +12,10 @@ import {
   Loader2,
   RefreshCw,
   Building2,
-  FileSearch
+  FileSearch,
+  GitBranch,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +41,7 @@ import { MOUVaultItem, useDeleteVaultItem, useTriggerExtraction, useTerminateMOU
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 interface MOUVaultCardProps {
   item: MOUVaultItem;
@@ -54,6 +58,7 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
   const deleteItem = useDeleteVaultItem();
   const triggerExtraction = useTriggerExtraction();
   const terminateMOU = useTerminateMOU();
+  const [showDaughters, setShowDaughters] = useState(false);
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
   const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
@@ -130,8 +135,8 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
   const terminationStatus = getTerminationStatus();
 
   return (
-    <>
-      <Card className="group hover:shadow-md transition-all">
+    <div className="space-y-0">
+      <Card className={cn("group hover:shadow-md transition-all", isDaughter && "border-l-4 border-l-primary/40", daughters.length > 0 && "rounded-b-none border-b-0")}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -285,11 +290,48 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground mt-2">
-            Uploaded {format(new Date(item.created_at), "MMM d, yyyy")}
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-muted-foreground">
+              Uploaded {format(new Date(item.created_at), "MMM d, yyyy")}
+            </p>
+            {daughters.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs gap-1 text-primary hover:text-primary"
+                onClick={() => setShowDaughters((p) => !p)}
+              >
+                <GitBranch className="w-3 h-3" />
+                {daughters.length} Branch{daughters.length > 1 ? "es" : ""}
+                {showDaughters ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Daughter Branch Cards — nested below parent */}
+      {daughters.length > 0 && showDaughters && (
+        <div className="border border-t-0 border-primary/20 rounded-b-lg bg-primary/[0.02] p-2 space-y-2">
+          <div className="flex items-center gap-2 px-2 py-1 mb-1">
+            <GitBranch className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary">Branch Versions</span>
+          </div>
+          {daughters
+            .sort((a, b) => (a.version_number || 2) - (b.version_number || 2))
+            .map((daughter) => (
+              <div key={daughter.id} className="ml-4 border-l-2 border-primary/30 pl-3">
+                <MOUVaultCard
+                  item={daughter}
+                  daughters={[]}
+                  showVendor={false}
+                  onViewDetails={onViewDetails}
+                  onViewDocument={onViewDocument}
+                />
+              </div>
+            ))}
+        </div>
+      )}
 
       <AlertDialog open={terminateOpen} onOpenChange={setTerminateOpen}>
         <AlertDialogContent>
@@ -324,6 +366,6 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
