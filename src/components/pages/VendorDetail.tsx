@@ -213,7 +213,12 @@ export default function VendorDetail() {
     criticalIssues: issues?.filter(i => i.priority === "critical").length || 0,
     avgResolutionTime,
     totalMous: mous?.length || 0,
-    activeMous: mous?.filter(m => m.status === "signed" || m.status === "approved").length || 0,
+    // Active MOUs: signed or approved, and not expired by date
+    activeMous: mous?.filter(m => {
+      const isActiveStatus = m.status === "signed" || m.status === "approved";
+      const isNotExpiredByDate = !m.end_date || new Date(m.end_date) >= new Date();
+      return isActiveStatus && isNotExpiredByDate;
+    }).length || 0,
     assignedEmployees: assignments?.length || 0,
     resolutionRate: issues?.length
       ? Math.round((resolvedIssues.length / issues.length) * 100)
