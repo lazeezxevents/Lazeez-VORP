@@ -63,6 +63,9 @@ export function ProfileSettings() {
         ? formData.designation_id
         : null,
     });
+
+    // Refresh the profile in auth context so changes are reflected immediately
+    await refreshProfile();
   };
 
   const handleAvatarClick = () => {
