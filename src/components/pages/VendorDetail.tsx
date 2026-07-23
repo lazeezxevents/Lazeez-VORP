@@ -193,6 +193,14 @@ export default function VendorDetail() {
   // Calculate KPI stats
   const resolvedIssues = issues?.filter(i => i.status === "resolved" || i.status === "closed") || [];
 
+  // Debug: Log all MOUs
+  console.log('All MOUs for vendor:', mous?.map(m => ({ 
+    title: m.title, 
+    status: m.status, 
+    start_date: m.start_date, 
+    end_date: m.end_date 
+  })));
+
   // Compute average resolution time in days from resolved issues that have resolved_at set
   const avgResolutionTime = (() => {
     const timedIssues = resolvedIssues.filter(
@@ -216,7 +224,16 @@ export default function VendorDetail() {
     // Active MOUs: signed or approved, and not expired by date
     activeMous: mous?.filter(m => {
       const isActiveStatus = m.status === "signed" || m.status === "approved";
-      const isNotExpiredByDate = !m.end_date || new Date(m.end_date) >= new Date();
+      // Compare dates only (not time) - MOU is active if end_date is today or future
+      const isNotExpiredByDate = !m.end_date || (
+        new Date(m.end_date).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0)
+      );
+      
+      // Debug log (remove after testing)
+      if (m.status === "signed" || m.status === "approved") {
+        console.log('MOU:', m.title, 'Status:', m.status, 'End date:', m.end_date, 'isNotExpired:', isNotExpiredByDate);
+      }
+      
       return isActiveStatus && isNotExpiredByDate;
     }).length || 0,
     assignedEmployees: assignments?.length || 0,
