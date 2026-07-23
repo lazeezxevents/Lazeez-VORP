@@ -42,6 +42,7 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
   const [file, setFile] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState("");
   const [documentType, setDocumentType] = useState("other");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -51,6 +52,11 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
       setFile(selectedFile);
       if (!documentName) {
         setDocumentName(selectedFile.name.replace(/\.[^/.]+$/, ""));
+      }
+      if (selectedFile.type.startsWith("image/")) {
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+      } else {
+        setPreviewUrl(null);
       }
     }
   };
@@ -145,31 +151,47 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="file">File</Label>
+            <Label htmlFor="file">File (PDF, DOCX, JPG, PNG, CNIC, License)</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="file"
                 type="file"
                 onChange={handleFileChange}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
                 className="flex-1"
               />
             </div>
+
+            {/* Live Preview Section */}
             {file && (
-              <div className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm">
-                <FileText className="w-4 h-4 text-muted-foreground" />
-                <span className="truncate">{file.name}</span>
-                <span className="text-muted-foreground">
-                  ({(file.size / 1024).toFixed(1)} KB)
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 ml-auto"
-                  onClick={() => setFile(null)}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
+              <div className="mt-3 p-3 border rounded-lg bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">File Preview</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => { setFile(null); setPreviewUrl(null); }}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+
+                {previewUrl && file.type.startsWith("image/") ? (
+                  <div className="relative w-full h-40 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
+                    <img src={previewUrl} alt="Preview" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-card border rounded-lg">
+                    <FileText className="w-8 h-8 text-primary flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024).toFixed(1)} KB • {file.type || "Document"}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

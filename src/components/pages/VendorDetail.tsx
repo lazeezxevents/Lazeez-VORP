@@ -667,24 +667,43 @@ export default function VendorDetail() {
                         {documents.map((doc) => (
                           <div
                             key={doc.id}
-                            className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/40 gap-3"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{doc.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {doc.file_type} • {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
+                            <div className="flex items-start sm:items-center gap-3 min-w-0">
+                              {doc.file_url && (doc.file_url.match(/\.(jpg|jpeg|png|webp)/i) || doc.file_type === "cnic" || doc.file_type === "license") ? (
+                                <div 
+                                  className="w-12 h-12 rounded-lg border bg-background overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(doc.file_url, '_blank')}
+                                >
+                                  <img src={doc.file_url} alt={doc.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                </div>
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-5 h-5 text-primary" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-foreground truncate">{doc.name}</p>
+                                <p className="text-xs text-muted-foreground capitalize">
+                                  {doc.file_type.replace("_", " ")} • {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-xs"
+                                onClick={() => window.open(doc.file_url, '_blank')}
+                              >
+                                View / Open
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => window.open(doc.file_url, '_blank')}
+                                title="Download Document"
                               >
                                 <Download className="w-4 h-4" />
                               </Button>
