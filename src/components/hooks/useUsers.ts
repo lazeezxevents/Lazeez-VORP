@@ -82,21 +82,20 @@ export function useUsers() {
 
       if (rolesError) throw rolesError;
 
-      // Fetch designations
-      const { data: designations } = await supabase
-        .from("designations")
-        .select("id, name");
+      // Fetch designations from custom_roles (designation_id now FKs to custom_roles)
+      const { data: customRoles } = await (supabase.from("custom_roles" as any) as any)
+        .select("id, name, display_name");
 
       // Merge profiles with roles and designations
       const usersWithRoles = profiles.map((profile) => {
         const userRole = roles.find((r) => r.user_id === profile.id);
         const p = profile as any;
-        const designation = designations?.find((d) => d.id === p.designation_id);
+        const customRole = customRoles?.find((cr: any) => cr.id === p.designation_id);
         return {
           ...profile,
           department_id: p.department_id,
           role: userRole?.role as AppRole | null,
-          designation: designation ? { name: designation.name } : null,
+          designation: customRole ? { name: customRole.display_name || customRole.name } : null,
         } as UserWithRole;
       });
 
@@ -166,9 +165,15 @@ export function useCreateDesignation() {
 
   return useMutation({
     mutationFn: async (input: { name: string; description?: string }) => {
-      const { data, error } = await supabase
-        .from("designations")
-        .insert(input)
+      // Designations are now stored as custom_roles records
+      const { data, error } = await (supabase.from("custom_roles" as any) as any)
+        .insert({
+          name: input.name,
+          display_name: input.name,
+          description: input.description || null,
+          main_role: "employee",
+          permissions: "{}",
+        })
         .select()
         .single();
 
@@ -176,7 +181,8 @@ export function useCreateDesignation() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["designations"] });
+      // custom-roles is the canonical cache key for designations
+      queryClient.invalidateQueries({ queryKey: ["custom-roles"] });
       toast.success("Designation created successfully");
     },
     onError: (error: Error) => {
@@ -190,11 +196,11 @@ export function useDeleteDesignation() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("designations").delete().eq("id", id);
+      const { error } = await (supabase.from("custom_roles" as any) as any).delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["designations"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-roles"] });
       toast.success("Designation deleted successfully");
     },
     onError: (error: Error) => {

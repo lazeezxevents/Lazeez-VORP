@@ -58,7 +58,10 @@ export function ProfileSettings() {
       userId: user.id,
       ...formData,
       department_id: formData.department_id || null,
-      designation_id: formData.designation_id || null,
+      // Empty string or "none" sentinel both become null
+      designation_id: formData.designation_id && formData.designation_id !== "none"
+        ? formData.designation_id
+        : null,
     });
   };
 
@@ -292,25 +295,22 @@ export function ProfileSettings() {
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="designation">Designation</Label>
               <Select
-                value={formData.designation_id}
-                onValueChange={(value) => setFormData({ ...formData, designation_id: value })}
+                value={formData.designation_id || "none"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, designation_id: value === "none" ? "" : value })
+                }
                 disabled={!canEditDepartment}
               >
                 <SelectTrigger className={!canEditDepartment ? "bg-muted cursor-not-allowed" : ""}>
                   <SelectValue placeholder="Select your designation" />
                 </SelectTrigger>
                 <SelectContent>
-                  {!designations || designations.length === 0 ? (
-                    <SelectItem value="no-designations" disabled>
-                      No designations available
+                  <SelectItem value="none">— None —</SelectItem>
+                  {designations?.map((designation) => (
+                    <SelectItem key={designation.id} value={designation.id}>
+                      {designation.display_name || designation.name}
                     </SelectItem>
-                  ) : (
-                    designations.map((designation) => (
-                      <SelectItem key={designation.id} value={designation.id}>
-                        {designation.display_name}
-                      </SelectItem>
-                    ))
-                  )}
+                  ))}
                 </SelectContent>
               </Select>
               {!canEditDepartment && (

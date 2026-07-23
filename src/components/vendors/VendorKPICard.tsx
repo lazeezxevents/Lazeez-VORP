@@ -54,7 +54,11 @@ export function VendorKPICard({ stats }: VendorKPICardProps) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Avg Resolution</p>
-                <p className="text-lg font-bold">{stats.avgResolutionTime} days</p>
+                <p className="text-lg font-bold">
+                  {stats.resolvedIssues > 0
+                    ? `${stats.avgResolutionTime} days`
+                    : "N/A"}
+                </p>
               </div>
             </div>
           </CardContent>

@@ -191,16 +191,33 @@ export default function VendorDetail() {
   };
 
   // Calculate KPI stats
+  const resolvedIssues = issues?.filter(i => i.status === "resolved" || i.status === "closed") || [];
+
+  // Compute average resolution time in days from resolved issues that have resolved_at set
+  const avgResolutionTime = (() => {
+    const timedIssues = resolvedIssues.filter(
+      i => i.resolved_at && i.created_at
+    );
+    if (timedIssues.length === 0) return 0;
+    const totalMs = timedIssues.reduce((sum, i) => {
+      return sum + (new Date(i.resolved_at!).getTime() - new Date(i.created_at).getTime());
+    }, 0);
+    const avgDays = totalMs / timedIssues.length / (1000 * 60 * 60 * 24);
+    return Math.round(avgDays * 10) / 10; // one decimal place
+  })();
+
   const kpiStats = {
     totalIssues: issues?.length || 0,
     openIssues: issues?.filter(i => i.status === "open").length || 0,
-    resolvedIssues: issues?.filter(i => i.status === "resolved" || i.status === "closed").length || 0,
+    resolvedIssues: resolvedIssues.length,
     criticalIssues: issues?.filter(i => i.priority === "critical").length || 0,
-    avgResolutionTime: 3, // Placeholder
+    avgResolutionTime,
     totalMous: mous?.length || 0,
     activeMous: mous?.filter(m => m.status === "signed" || m.status === "approved").length || 0,
     assignedEmployees: assignments?.length || 0,
-    resolutionRate: issues?.length ? Math.round((issues.filter(i => i.status === "resolved" || i.status === "closed").length / issues.length) * 100) : 0,
+    resolutionRate: issues?.length
+      ? Math.round((resolvedIssues.length / issues.length) * 100)
+      : 0,
   };
 
   const isLoading = vendorLoading;
