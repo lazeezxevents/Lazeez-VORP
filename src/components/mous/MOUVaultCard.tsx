@@ -193,12 +193,10 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
                     Terminate MOU
                   </DropdownMenuItem>
                 )}
-                {(item.extraction_status === "failed" || item.extraction_status === "processing") && (
-                  <DropdownMenuItem onClick={handleRetryExtraction}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Retry Extraction
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onClick={handleRetryExtraction}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Re-parse / Re-extract AI Data
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
