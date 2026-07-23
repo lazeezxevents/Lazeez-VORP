@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Building2, Mail, Phone, MapPin, Star,
-  FileText, Users, Ticket, Calendar, Download,
+  FileText, Users, Ticket, Calendar, Download, Eye,
   Edit, Clock, CheckCircle2, DollarSign, TrendingUp,
   MessageSquare, History, BarChart3, Archive, Plus,
   Trash2, AlertCircle, Loader2
@@ -693,20 +693,55 @@ export default function VendorDetail() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="gap-1 text-xs"
+                                className="gap-1.5 text-xs"
                                 onClick={() => window.open(doc.file_url, '_blank')}
                               >
-                                View / Open
+                                <Eye className="w-3.5 h-3.5" />
+                                Preview
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => window.open(doc.file_url, '_blank')}
+                                variant="secondary"
+                                size="sm"
+                                className="gap-1.5 text-xs"
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(doc.file_url);
+                                    const blob = await res.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = doc.name || "document";
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+                                  } catch (e) {
+                                    window.open(doc.file_url, "_blank");
+                                  }
+                                }}
                                 title="Download Document"
                               >
-                                <Download className="w-4 h-4" />
+                                <Download className="w-3.5 h-3.5" />
+                                Download
                               </Button>
+                              {isStaff && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    await deleteDocument.mutateAsync({
+                                      id: doc.id,
+                                      vendorId: id!,
+                                      fileUrl: doc.file_url,
+                                    });
+                                    refetchDocs();
+                                  }}
+                                  title="Delete Document"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}

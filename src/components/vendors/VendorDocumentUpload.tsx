@@ -71,16 +71,16 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
 
     try {
       const fileExt = file.name.split(".").pop();
-      const filePath = `${vendorId}/${Date.now()}-${documentName}.${fileExt}`;
+      const filePath = `vendor-docs/${vendorId}/${Date.now()}-${documentName}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("vendor-documents")
+        .from("mou-vault")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from("vendor-documents")
+        .from("mou-vault")
         .getPublicUrl(filePath);
 
       const { error: dbError } = await supabase
@@ -217,12 +217,16 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: async ({ id, vendorId, fileUrl }: { id: string; vendorId: string; fileUrl: string }) => {
       // Extract file path from URL
-      const urlParts = fileUrl.split("/vendor-documents/");
-      if (urlParts.length > 1) {
-        await supabase.storage
-          .from("vendor-documents")
-          .remove([urlParts[1]]);
+      let filePath = fileUrl;
+      if (fileUrl.includes("/mou-vault/")) {
+        filePath = decodeURIComponent(fileUrl.split("/mou-vault/")[1]);
+      } else if (fileUrl.includes("/vendor-documents/")) {
+        filePath = decodeURIComponent(fileUrl.split("/vendor-documents/")[1]);
       }
+
+      await supabase.storage
+        .from("mou-vault")
+        .remove([filePath]);
 
       const { error } = await supabase
         .from("vendor_documents")
