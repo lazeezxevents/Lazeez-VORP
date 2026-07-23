@@ -41,13 +41,14 @@ import { Link } from "react-router-dom";
 
 interface MOUVaultCardProps {
   item: MOUVaultItem;
+  daughters?: MOUVaultItem[];
   showVendor?: boolean;
   vendorStatus?: string;
   onViewDetails?: (item: MOUVaultItem) => void;
   onViewDocument?: (item: MOUVaultItem) => void;
 }
 
-export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDetails, onViewDocument }: MOUVaultCardProps) {
+export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorStatus, onViewDetails, onViewDocument }: MOUVaultCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const deleteItem = useDeleteVaultItem();
@@ -56,6 +57,8 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
   const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
+  const versionNum = item.version_number || (item.parent_vault_id ? 2 : 1);
+  const isDaughter = !!item.parent_vault_id;
 
   const getExpirationStatus = () => {
     if (!item.effective_end_date) return null;
@@ -149,9 +152,14 @@ export function MOUVaultCard({ item, showVendor = true, vendorStatus, onViewDeta
                   </Link>
                 )}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <Badge variant="outline" className="text-xs">
-                    {item.document_type === "new" ? "New" : "Legacy"}
+                  <Badge variant="outline" className={cn("text-xs font-bold", isDaughter ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground")}>
+                    v{versionNum}.0 {isDaughter ? "Daughter Branch" : "Primary"}
                   </Badge>
+                  {daughters.length > 0 && (
+                    <Badge variant="secondary" className="text-xs bg-accent/20 text-accent-foreground font-semibold">
+                      {daughters.length} Daughter {daughters.length === 1 ? "Branch" : "Branches"}
+                    </Badge>
+                  )}
                   {hasAutoRenewal && (
                     <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
                       <RefreshCw className="w-3 h-3 mr-1" />

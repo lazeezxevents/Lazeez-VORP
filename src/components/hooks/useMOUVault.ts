@@ -44,6 +44,9 @@ export interface MOUVaultItem {
   mou_purpose?: string | null;
   renewal_count?: number;
   last_renewal_date?: string | null;
+  // Branching fields
+  parent_vault_id?: string | null;
+  version_number?: number;
 }
 
 export interface MOUVaultRevision {
@@ -63,6 +66,8 @@ export interface CreateVaultItemInput {
   document_url: string;
   document_type: MOUDocumentType;
   mou_id?: string;
+  parent_vault_id?: string;
+  version_number?: number;
 }
 
 export interface UpdateVaultItemInput {

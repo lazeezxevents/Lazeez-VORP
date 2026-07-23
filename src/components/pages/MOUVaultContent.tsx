@@ -221,17 +221,36 @@ export default function MOUVaultContent() {
             </Select>
           </div>
 
-          {/* Grid */}
+          {/* Grid with Branching Tree Support */}
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredItems.map((item) => (
-                <MOUVaultCard
-                  key={item.id}
-                  item={item}
-                  onViewDetails={setSelectedItem}
-                  onViewDocument={setViewerItem}
-                />
-              ))}
+              {/* Group items by root parent or display standalone */}
+              {(() => {
+                // Find all daughter items
+                const daughterIds = new Set(filteredItems.filter(i => i.parent_vault_id).map(i => i.id));
+                
+                // Primary items to display on top level (standalone OR items that are NOT daughter of another item in current view, or the latest version)
+                const primaryItems = filteredItems.filter(item => {
+                  // If this item is a parent to others OR standalone, show it
+                  const hasDaughters = filteredItems.some(d => d.parent_vault_id === item.id);
+                  const isDaughter = !!item.parent_vault_id;
+                  return !isDaughter || hasDaughters;
+                });
+
+                return filteredItems.map((item) => {
+                  // Find all daughter versions linked to this item as parent
+                  const daughters = filteredItems.filter((d) => d.parent_vault_id === item.id);
+                  return (
+                    <MOUVaultCard
+                      key={item.id}
+                      item={item}
+                      daughters={daughters}
+                      onViewDetails={setSelectedItem}
+                      onViewDocument={setViewerItem}
+                    />
+                  );
+                });
+              })()}
             </div>
           ) : (
             <Card>

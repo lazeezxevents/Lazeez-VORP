@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useVendors } from "@/hooks/useVendors";
-import { useUploadToVault, useTriggerExtraction, MOUDocumentType } from "@/hooks/useMOUVault";
+import { useUploadToVault, useTriggerExtraction, useMOUVaultByVendor, MOUDocumentType } from "@/hooks/useMOUVault";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -33,9 +33,10 @@ export function MOUVaultUpload({ open, onOpenChange, preselectedVendorId }: MOUV
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [parentVaultId, setParentVaultId] = useState<string>("none");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const { data: vendors } = useVendors();
+  const { data: existingVendorMOUs } = useMOUVaultByVendor(vendorId);
   const uploadToVault = useUploadToVault();
   const triggerExtraction = useTriggerExtraction();
 
@@ -83,12 +84,24 @@ export function MOUVaultUpload({ open, onOpenChange, preselectedVendorId }: MOUV
         .from("mou-vault")
         .getPublicUrl(fileName);
 
+      // Calculate version number if branching
+      let versionNum = 1;
+      let targetParentId: string | undefined = undefined;
+
+      if (parentVaultId && parentVaultId !== "none") {
+        targetParentId = parentVaultId;
+        const parentDoc = existingVendorMOUs?.find(m => m.id === parentVaultId);
+        versionNum = (parentDoc?.version_number || 1) + 1;
+      }
+
       // Create vault record
       const vaultItem = await uploadToVault.mutateAsync({
         vendor_id: vendorId,
         document_name: file.name,
         document_url: fileName,
         document_type: documentType,
+        parent_vault_id: targetParentId,
+        version_number: versionNum,
       });
 
       setUploadProgress(80);
@@ -151,6 +164,33 @@ export function MOUVaultUpload({ open, onOpenChange, preselectedVendorId }: MOUV
               </SelectContent>
             </Select>
           </div>
+
+          {/* Branching Daughter Version Selector */}
+          {vendorId && existingVendorMOUs && existingVendorMOUs.length > 0 && (
+            <div className="space-y-2 p-3 border rounded-lg bg-muted/20">
+              <Label className="text-xs font-semibold flex items-center gap-1 text-primary">
+                Branch / Versioning (Optional)
+              </Label>
+              <Select value={parentVaultId} onValueChange={setParentVaultId}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="New Main (V1.0)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">New Main Version (v1.0)</SelectItem>
+                  {existingVendorMOUs.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      Branch off: {m.document_name} (v{m.version_number || 1}.0)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {parentVaultId && parentVaultId !== "none"
+                  ? "This upload will become the active daughter version (V2.0+) while preserving history of V1.0."
+                  : "Uploads as a new standalone primary MOU document."}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>PDF Document *</Label>
