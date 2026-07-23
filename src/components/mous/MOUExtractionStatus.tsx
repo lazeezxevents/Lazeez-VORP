@@ -19,7 +19,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { MOUVaultItem, useUpdateVaultItem } from "@/hooks/useMOUVault";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { MOUVaultItem, useUpdateVaultItem, useTerminateMOU } from "@/hooks/useMOUVault";
 import { MOURenewalDialog } from "./MOURenewalDialog";
 
 interface MOUExtractionStatusProps {
@@ -30,6 +31,7 @@ interface MOUExtractionStatusProps {
 export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps) {
   const [editing, setEditing] = useState(false);
   const [renewalOpen, setRenewalOpen] = useState(false);
+  const [terminateOpen, setTerminateOpen] = useState(false);
   const [formData, setFormData] = useState({
     signed_date: item.signed_date || "",
     effective_start_date: item.effective_start_date || "",
@@ -38,6 +40,15 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
   });
 
   const updateItem = useUpdateVaultItem();
+  const terminateMOU = useTerminateMOU();
+
+  const handleTerminate = async () => {
+    await terminateMOU.mutateAsync({
+      vaultId: item.id,
+      vendorId: item.vendor_id,
+    });
+    setTerminateOpen(false);
+  };
 
   const handleSave = async () => {
     await updateItem.mutateAsync({
@@ -185,7 +196,9 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
                     <div>
                       <p className="text-xs text-muted-foreground">Effective End</p>
                       <p className="font-medium">
-                        {item.effective_end_date ? format(new Date(item.effective_end_date), "MMMM d, yyyy") : "Not extracted"}
+                        {item.effective_end_date 
+                          ? format(new Date(item.effective_end_date), "MMMM d, yyyy") 
+                          : "Active (Ongoing)"}
                       </p>
                     </div>
                     {item.termination_deadline && (
@@ -291,15 +304,26 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
                           </span>
                         </div>
                       )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full mt-2"
-                        onClick={() => setRenewalOpen(true)}
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Renew MOU
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setRenewalOpen(true)}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Renew MOU
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setTerminateOpen(true)}
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          Terminate MOU
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -332,6 +356,23 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={terminateOpen} onOpenChange={setTerminateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Terminate MOU?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will set the MOU effective end date to today and update the vendor status to <strong>Left</strong> in the Vendor Directory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTerminate} className="bg-destructive text-destructive-foreground">
+              Terminate & Mark Vendor Left
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <MOURenewalDialog 
         item={item} 

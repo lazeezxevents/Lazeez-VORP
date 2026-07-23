@@ -106,7 +106,7 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-6">
               <Button variant="outline" size="sm" onClick={handleDownload} disabled={!signedUrl}>
                 <Download className="w-4 h-4 mr-2" />
                 Download
@@ -117,9 +117,6 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
                   Open in Tab
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-                <X className="w-5 h-5" />
-              </Button>
             </div>
           </div>
 
@@ -242,7 +239,7 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
                           <span className="font-medium">
                             {item.effective_end_date 
                               ? format(new Date(item.effective_end_date), "MMM d, yyyy") 
-                              : "Not extracted"}
+                              : (vendorStatus === "left" || vendorStatus === "terminated" ? "Terminated" : "Active (Ongoing)")}
                           </span>
                         </div>
                         <div className="flex justify-between">
