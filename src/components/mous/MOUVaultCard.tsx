@@ -62,8 +62,10 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
   const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
-  const versionNum = item.version_number || (item.parent_vault_id ? 2 : 1);
-  const isDaughter = !!item.parent_vault_id;
+  // Branch info stored in extracted_terms since DB columns may not exist yet
+  const branchParentId = extractedTerms?._branch_parent_id as string | null || item.parent_vault_id || null;
+  const versionNum = (extractedTerms?._branch_version as number) || item.version_number || (branchParentId ? 2 : 1);
+  const isDaughter = !!branchParentId;
 
   const getExpirationStatus = () => {
     if (!item.effective_end_date) return null;

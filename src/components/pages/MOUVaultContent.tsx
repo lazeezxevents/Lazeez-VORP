@@ -225,19 +225,26 @@ export default function MOUVaultContent() {
           {filteredItems.length > 0 ? (
             <div className="space-y-6">
               {(() => {
+                // Helper: get branch parent id from item (DB column or extracted_terms metadata)
+                const getBranchParentId = (item: MOUVaultItem) => {
+                  const terms = item.extracted_terms as Record<string, unknown> | null;
+                  return (terms?._branch_parent_id as string | null) || item.parent_vault_id || null;
+                };
+
                 // Build a map: parentId -> daughter items
                 const daughterMap = new Map<string, MOUVaultItem[]>();
                 filteredItems.forEach((item) => {
-                  if (item.parent_vault_id) {
-                    const existing = daughterMap.get(item.parent_vault_id) || [];
+                  const pid = getBranchParentId(item);
+                  if (pid) {
+                    const existing = daughterMap.get(pid) || [];
                     existing.push(item);
-                    daughterMap.set(item.parent_vault_id, existing);
+                    daughterMap.set(pid, existing);
                   }
                 });
 
                 // IDs that are daughters of some parent
                 const daughterIds = new Set(
-                  filteredItems.filter((i) => !!i.parent_vault_id).map((i) => i.id)
+                  filteredItems.filter((i) => !!getBranchParentId(i)).map((i) => i.id)
                 );
 
                 // Root items = items that are NOT a daughter of another item in the current view

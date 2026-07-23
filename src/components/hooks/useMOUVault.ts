@@ -194,11 +194,20 @@ export function useUploadToVault() {
 
   return useMutation({
     mutationFn: async (input: CreateVaultItemInput) => {
+      // Extract branching fields - store in extracted_terms since schema may not have these columns yet
+      const { parent_vault_id, version_number, ...coreInput } = input;
+      
+      const branchMeta = (parent_vault_id || version_number)
+        ? { _branch_parent_id: parent_vault_id || null, _branch_version: version_number || 1 }
+        : {};
+
       const { data, error } = await supabase
         .from("mou_vault")
         .insert({
-          ...input,
+          ...coreInput,
           uploaded_by: user!.id,
+          // Seed extracted_terms with branch metadata so it persists
+          extracted_terms: Object.keys(branchMeta).length > 0 ? branchMeta : null,
         })
         .select()
         .single();

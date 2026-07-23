@@ -45,6 +45,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
@@ -89,6 +95,7 @@ export default function VendorDetail() {
   const [viewerVaultItem, setViewerVaultItem] = useState<MOUVaultItem | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string; isImage: boolean; isPdf: boolean } | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useVendor(id || "");
   const { data: vaultItems, isLoading: vaultLoading } = useMOUVaultByVendor(id);
@@ -670,18 +677,7 @@ export default function VendorDetail() {
                           const isDataUrl = doc.file_url?.startsWith("data:");
 
                           const handlePreview = () => {
-                            if (isDataUrl) {
-                              const win = window.open();
-                              if (win) {
-                                if (isImage) {
-                                  win.document.write(`<img src="${doc.file_url}" style="max-width:100%;max-height:100vh;display:block;margin:auto;" />`);
-                                } else {
-                                  win.document.write(`<iframe src="${doc.file_url}" style="width:100%;height:100vh;border:none;"></iframe>`);
-                                }
-                              }
-                            } else {
-                              window.open(doc.file_url, "_blank");
-                            }
+                            setPreviewDoc({ name: doc.name, url: doc.file_url, isImage: !!isImage, isPdf: !!isPdf });
                           };
 
                           const handleDownload = () => {
@@ -790,6 +786,34 @@ export default function VendorDetail() {
                 <VendorRemarks vendorId={id!} />
               </TabsContent>
 
+              {/* Inline Document Preview Dialog */}
+              <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+                <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-0">
+                  <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
+                    <DialogTitle className="flex items-center gap-2 text-sm">
+                      <FileText className="w-4 h-4 text-primary" />
+                      {previewDoc?.name}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-hidden">
+                    {previewDoc?.isImage ? (
+                      <div className="w-full h-full flex items-center justify-center bg-muted/20 p-4">
+                        <img
+                          src={previewDoc.url}
+                          alt={previewDoc.name}
+                          className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                        />
+                      </div>
+                    ) : (
+                      <iframe
+                        src={previewDoc?.url}
+                        className="w-full h-full border-0"
+                        title={previewDoc?.name}
+                      />
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
               {/* Team Tab */}
               <TabsContent value="team">
                 <Card>

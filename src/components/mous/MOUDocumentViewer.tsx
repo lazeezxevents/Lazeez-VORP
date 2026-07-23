@@ -54,12 +54,18 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.storage
-        .from("mou-vault")
-        .createSignedUrl(item.document_url, 3600); // 1 hour validity
+      let resolvedUrl = item.document_url;
 
-      if (error) throw error;
-      setSignedUrl(data.signedUrl);
+      // If it's already a full URL (https://...) use it directly
+      if (!resolvedUrl.startsWith("http")) {
+        // Bare storage path — construct public URL
+        const { data } = supabase.storage
+          .from("mou-vault")
+          .getPublicUrl(resolvedUrl);
+        resolvedUrl = data.publicUrl;
+      }
+
+      setSignedUrl(resolvedUrl);
     } catch (error) {
       console.error("Failed to load document:", error);
       toast.error("Failed to load document");
