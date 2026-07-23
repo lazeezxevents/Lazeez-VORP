@@ -664,87 +664,116 @@ export default function VendorDetail() {
                       </div>
                     ) : documents && documents.length > 0 ? (
                       <div className="space-y-3">
-                        {documents.map((doc) => (
-                          <div
-                            key={doc.id}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/40 gap-3"
-                          >
-                            <div className="flex items-start sm:items-center gap-3 min-w-0">
-                              {doc.file_url && (doc.file_url.match(/\.(jpg|jpeg|png|webp)/i) || doc.file_type === "cnic" || doc.file_type === "license") ? (
-                                <div 
-                                  className="w-12 h-12 rounded-lg border bg-background overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => window.open(doc.file_url, '_blank')}
+                        {documents.map((doc) => {
+                          const isImage = doc.file_url?.startsWith("data:image/") || doc.file_url?.match(/\.(jpg|jpeg|png|webp)/i);
+                          const isPdf = doc.file_url?.startsWith("data:application/pdf") || doc.file_url?.match(/\.pdf/i);
+                          const isDataUrl = doc.file_url?.startsWith("data:");
+
+                          const handlePreview = () => {
+                            if (isDataUrl) {
+                              const win = window.open();
+                              if (win) {
+                                if (isImage) {
+                                  win.document.write(`<img src="${doc.file_url}" style="max-width:100%;max-height:100vh;display:block;margin:auto;" />`);
+                                } else {
+                                  win.document.write(`<iframe src="${doc.file_url}" style="width:100%;height:100vh;border:none;"></iframe>`);
+                                }
+                              }
+                            } else {
+                              window.open(doc.file_url, "_blank");
+                            }
+                          };
+
+                          const handleDownload = () => {
+                            const a = document.createElement("a");
+                            a.href = doc.file_url;
+                            a.download = doc.name || "document";
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          };
+
+                          return (
+                            <div
+                              key={doc.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/40 gap-3"
+                            >
+                              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                                {isImage ? (
+                                  <div
+                                    className="w-12 h-12 rounded-lg border bg-background overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={handlePreview}
+                                  >
+                                    <img src={doc.file_url} alt={doc.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                  </div>
+                                ) : isPdf ? (
+                                  <div
+                                    className="w-12 h-12 rounded-lg bg-red-500/10 border border-red-200 flex items-center justify-center flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={handlePreview}
+                                  >
+                                    <FileText className="w-6 h-6 text-red-500" />
+                                  </div>
+                                ) : (
+                                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="w-6 h-6 text-primary" />
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-foreground truncate">{doc.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded capitalize">
+                                      {doc.file_type.replace("_", " ")}
+                                    </span>
+                                    {doc.file_size && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {(doc.file_size / 1024).toFixed(1)} KB
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 text-xs"
+                                  onClick={handlePreview}
                                 >
-                                  <img src={doc.file_url} alt={doc.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                                </div>
-                              ) : (
-                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                  <FileText className="w-5 h-5 text-primary" />
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-foreground truncate">{doc.name}</p>
-                                <p className="text-xs text-muted-foreground capitalize">
-                                  {doc.file_type.replace("_", " ")} • {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
-                                </p>
+                                  <Eye className="w-3.5 h-3.5" />
+                                  Preview
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="gap-1.5 text-xs"
+                                  onClick={handleDownload}
+                                  title="Download Document"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  Download
+                                </Button>
+                                {isStaff && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                    onClick={async () => {
+                                      await deleteDocument.mutateAsync({
+                                        id: doc.id,
+                                        vendorId: id!,
+                                        fileUrl: doc.file_url,
+                                      });
+                                      refetchDocs();
+                                    }}
+                                    title="Delete Document"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 self-end sm:self-auto">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5 text-xs"
-                                onClick={() => window.open(doc.file_url, '_blank')}
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                Preview
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="gap-1.5 text-xs"
-                                onClick={async () => {
-                                  try {
-                                    const res = await fetch(doc.file_url);
-                                    const blob = await res.blob();
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = doc.name || "document";
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    window.URL.revokeObjectURL(url);
-                                    document.body.removeChild(a);
-                                  } catch (e) {
-                                    window.open(doc.file_url, "_blank");
-                                  }
-                                }}
-                                title="Download Document"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                Download
-                              </Button>
-                              {isStaff && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                  onClick={async () => {
-                                    await deleteDocument.mutateAsync({
-                                      id: doc.id,
-                                      vendorId: id!,
-                                      fileUrl: doc.file_url,
-                                    });
-                                    refetchDocs();
-                                  }}
-                                  title="Delete Document"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">

@@ -70,37 +70,20 @@ export function VendorDocumentUpload({ vendorId, onUploadComplete }: VendorDocum
     setUploading(true);
 
     try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `vendor-docs/${vendorId}/${Date.now()}-${documentName}.${fileExt}`;
-      let finalFileUrl = "";
-
-      // Try uploading to mou-vault bucket
-      const { error: uploadError } = await supabase.storage
-        .from("mou-vault")
-        .upload(filePath, file);
-
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage
-          .from("mou-vault")
-          .getPublicUrl(filePath);
-        finalFileUrl = urlData.publicUrl;
-      } else {
-        console.warn("Storage upload failed, falling back to inline data URL:", uploadError);
-        // Fallback: convert file to Data URL so it is stored directly in DB table
-        finalFileUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
+      // Convert file directly to Base64 Data URL — no storage bucket needed
+      const fileDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
 
       const { error: dbError } = await supabase
         .from("vendor_documents")
         .insert({
           vendor_id: vendorId,
           name: documentName,
-          file_url: finalFileUrl,
+          file_url: fileDataUrl,
           file_type: documentType,
           file_size: file.size,
           uploaded_by: user.id,
