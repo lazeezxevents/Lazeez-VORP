@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { format, differenceInDays, addDays } from "date-fns";
+import { useMemo } from "react";
+import { format, differenceInDays, addDays, startOfDay } from "date-fns";
 import { FileText, Clock, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,30 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-interface MOUWithVendor {
-  id: string;
-  title: string;
-  status: string;
-  end_date: string | null;
-  created_at: string;
-  updated_at: string;
-  vendor: { name: string } | null;
-}
-
-interface MOUVersion {
-  id: string;
-  mou_id: string;
-  version_number: number;
-  change_type: string;
-  change_summary: string | null;
-  created_at: string;
-  status: string;
-  title: string;
-}
+import { useMOUVault, type MOUVaultItem } from "@/hooks/useMOUVault";
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
+  pending: "bg-warning/10 text-warning",
+  processing: "bg-info/10 text-info",
+  completed: "bg-success/10 text-success",
+  failed: "bg-destructive/10 text-destructive",
   pending_review: "bg-warning/10 text-warning",
   approved: "bg-info/10 text-info",
   signed: "bg-success/10 text-success",
@@ -42,68 +25,35 @@ const statusColors: Record<string, string> = {
 
 export function MOUActivityWidget() {
   const navigate = useNavigate();
+  const { data: vaultItems = [], isLoading, isError, error } = useMOUVault();
 
-  // Fetch MOUs with upcoming expirations
-  const { data: mous, isLoading: mousLoading } = useQuery({
-    queryKey: ["mous-expiring"],
-    queryFn: async () => {
-      const thirtyDaysFromNow = addDays(new Date(), 30).toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("mous")
-        .select(`*, vendor:vendors(name)`)
-        .lte("end_date", thirtyDaysFromNow)
-        .gte("end_date", new Date().toISOString().split("T")[0])
-        .in("status", ["signed", "approved"])
-        .order("end_date", { ascending: true })
-        .limit(5);
+  const { stats, expiringItems, recentActivity } = useMemo(() => {
+    const today = startOfDay(new Date());
+    const thirtyDaysFromNow = addDays(today, 30);
+    const isActive = (item: MOUVaultItem) =>
+      item.extraction_status === "completed" &&
+      (!item.effective_start_date || new Date(item.effective_start_date) <= today) &&
+      (!item.effective_end_date || new Date(item.effective_end_date) >= today);
+    const activeItems = vaultItems.filter(isActive);
+    const expiring = activeItems
+      .filter((item) => item.effective_end_date && new Date(item.effective_end_date) <= thirtyDaysFromNow)
+      .sort((a, b) => new Date(a.effective_end_date!).getTime() - new Date(b.effective_end_date!).getTime());
 
-      if (error) throw error;
-      return data as unknown as MOUWithVendor[];
-    },
-  });
-
-  // Fetch recent MOU activity
-  const { data: recentActivity, isLoading: activityLoading } = useQuery({
-    queryKey: ["mou-activity"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mou_versions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      if (error) throw error;
-      return data as MOUVersion[];
-    },
-  });
-
-  // Fetch MOU stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["mou-stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mous")
-        .select("status, end_date");
-
-      if (error) throw error;
-
-      const now = new Date();
-      const thirtyDaysFromNow = addDays(now, 30);
-
-      return {
-        total: data?.length || 0,
-        active: data?.filter((m) => m.status === "signed" || m.status === "approved")?.length || 0,
-        expiringSoon: data?.filter((m) => {
-          if (!m.end_date) return false;
-          const endDate = new Date(m.end_date);
-          return endDate >= now && endDate <= thirtyDaysFromNow;
-        })?.length || 0,
-        pendingReview: data?.filter((m) => m.status === "pending_review")?.length || 0,
-      };
-    },
-  });
-
-  const isLoading = mousLoading || activityLoading || statsLoading;
+    return {
+      stats: {
+        total: vaultItems.length,
+        active: activeItems.length,
+        expiringSoon: expiring.length,
+        pendingReview: vaultItems.filter((item) =>
+          item.extraction_status === "pending" || item.extraction_status === "processing"
+        ).length,
+      },
+      expiringItems: expiring.slice(0, 5),
+      recentActivity: [...vaultItems]
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        .slice(0, 5),
+    };
+  }, [vaultItems]);
 
   const getDaysUntilExpiry = (endDate: string) => {
     const days = differenceInDays(new Date(endDate), new Date());
@@ -127,6 +77,17 @@ export function MOUActivityWidget() {
       );
     }
   };
+
+  if (isError) {
+    return (
+      <Card className="border-destructive/40">
+        <CardHeader><CardTitle>MOU Vault data could not load</CardTitle></CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "Please check your access to the MOU Vault."}
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -205,7 +166,7 @@ export function MOUActivityWidget() {
               variant="ghost"
               size="sm"
               className="text-muted-foreground"
-              onClick={() => navigate("/mous")}
+              onClick={() => navigate("/mou-vault")}
             >
               View All
               <ArrowRight className="w-4 h-4 ml-1" />
@@ -213,11 +174,11 @@ export function MOUActivityWidget() {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[200px]">
-              {mous && mous.length > 0 ? (
+              {expiringItems.length > 0 ? (
                 <div className="space-y-3">
-                  {mous.map((mou) => {
-                    const days = mou.end_date
-                      ? getDaysUntilExpiry(mou.end_date)
+                  {expiringItems.map((mou) => {
+                    const days = mou.effective_end_date
+                      ? getDaysUntilExpiry(mou.effective_end_date)
                       : null;
                     return (
                       <div
@@ -226,11 +187,11 @@ export function MOUActivityWidget() {
                           "flex items-center justify-between p-3 rounded-lg",
                           "bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                         )}
-                        onClick={() => navigate("/mous")}
+                        onClick={() => navigate("/mou-vault")}
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground truncate">
-                            {mou.title}
+                            {mou.document_name}
                           </p>
                           <p className="text-sm text-muted-foreground truncate">
                             {mou.vendor?.name || "No vendor"}
@@ -263,7 +224,7 @@ export function MOUActivityWidget() {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[200px]">
-              {recentActivity && recentActivity.length > 0 ? (
+              {recentActivity.length > 0 ? (
                 <div className="space-y-3">
                   {recentActivity.map((activity) => (
                     <div
@@ -275,17 +236,19 @@ export function MOUActivityWidget() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">
-                          {activity.title}
+                          {activity.document_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {activity.change_summary || `Version ${activity.version_number}`}
+                          {activity.extraction_status === "completed"
+                            ? "Document extraction completed"
+                            : `Extraction ${activity.extraction_status}`}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(activity.created_at), "MMM d, yyyy 'at' h:mm a")}
+                          {format(new Date(activity.updated_at), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       </div>
-                      <Badge className={statusColors[activity.status] || "bg-muted"}>
-                        {activity.status.replace("_", " ")}
+                      <Badge className={statusColors[activity.extraction_status] || "bg-muted"}>
+                        {activity.extraction_status.replace("_", " ")}
                       </Badge>
                     </div>
                   ))}
