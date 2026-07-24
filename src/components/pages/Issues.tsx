@@ -390,6 +390,8 @@ export default function Issues() {
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Vendor</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Priority</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Assigned To</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Project</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Created</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground"></th>
                     </tr>
@@ -397,7 +399,7 @@ export default function Issues() {
                   <tbody>
                     {filteredIssues.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={8} className="p-8 text-center text-muted-foreground">
                           No issues found
                         </td>
                       </tr>
@@ -429,6 +431,12 @@ export default function Issues() {
                             <Badge className={statusConfig[issue.status].color}>
                               {statusLabels[issue.status]}
                             </Badge>
+                          </td>
+                          <td className="p-4 text-sm text-foreground">
+                            {issue.assignee?.full_name || issue.assignee?.email || "-"}
+                          </td>
+                          <td className="p-4 text-sm text-foreground">
+                            {issue.project?.name || "-"}
                           </td>
                           <td className="p-4 text-sm text-muted-foreground">
                             {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
