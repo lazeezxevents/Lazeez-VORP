@@ -112,6 +112,260 @@ export type Database = {
           },
         ]
       }
+      issue_activity: {
+        Row: {
+          id: string
+          issue_id: string
+          user_id: string | null
+          action_type: string
+          old_value: string | null
+          new_value: string | null
+          comment_text: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          user_id?: string | null
+          action_type: string
+          old_value?: string | null
+          new_value?: string | null
+          comment_text?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          user_id?: string | null
+          action_type?: string
+          old_value?: string | null
+          new_value?: string | null
+          comment_text?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_activity_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_attachments: {
+        Row: {
+          id: string
+          issue_id: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          file_name?: string
+          file_url?: string
+          file_type?: string
+          file_size?: number
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_attachments_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_labels: {
+        Row: {
+          id: string
+          name: string
+          color: string
+          description: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          color?: string
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          color?: string
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      issue_label_relations: {
+        Row: {
+          id: string
+          issue_id: string
+          label_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          label_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          label_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_label_relations_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issue_label_relations_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "issue_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_time_logs: {
+        Row: {
+          id: string
+          issue_id: string
+          user_id: string
+          hours: number
+          description: string | null
+          logged_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          user_id: string
+          hours: number
+          description?: string | null
+          logged_date?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          user_id?: string
+          hours?: number
+          description?: string | null
+          logged_date?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_time_logs_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_templates: {
+        Row: {
+          id: string
+          name: string
+          title_template: string
+          description_template: string | null
+          default_priority: Database["public"]["Enums"]["issue_priority"]
+          default_labels: string[] | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          title_template: string
+          description_template?: string | null
+          default_priority?: Database["public"]["Enums"]["issue_priority"]
+          default_labels?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          title_template?: string
+          description_template?: string | null
+          default_priority?: Database["public"]["Enums"]["issue_priority"]
+          default_labels?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      issue_watchers: {
+        Row: {
+          id: string
+          issue_id: string
+          user_id: string
+          added_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          user_id: string
+          added_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          user_id?: string
+          added_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_watchers_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issue_comments: {
         Row: {
           content: string

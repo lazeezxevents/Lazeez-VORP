@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -19,12 +19,12 @@ export function UnifiedNotificationSettings() {
   const [localComm, setLocalComm] = useState(preferences.communication);
   const [localUI, setLocalUI] = useState(preferences.ui);
 
-  // Update local state when preferences load
-  useState(() => {
+  // Update local state when preferences load from DB
+  useEffect(() => {
     setLocalContent(preferences.content);
     setLocalComm(preferences.communication);
     setLocalUI(preferences.ui);
-  });
+  }, [preferences]);
 
   const handleSaveAll = async () => {
     try {
