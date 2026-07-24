@@ -746,7 +746,6 @@ export default function ProjectBoard() {
                                     </div>
                                 </Card>
                             </TabsContent>
-                            20:
                             {/* ─── Backlog Tab ────────────────────────────── */}
                             <TabsContent value="backlog" className="mt-3">
                                 <Card className="border-none shadow-none bg-transparent">
@@ -838,7 +837,6 @@ export default function ProjectBoard() {
                                     ))}
                                 </div>
                             </TabsContent>
-                            20:
                             {/* ─── Activity Tab ──────────────────────────── */}
                             <TabsContent value="activity" className="mt-3">
                                 <Card className="border-none shadow-none bg-transparent">
@@ -1330,7 +1328,6 @@ export default function ProjectBoard() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            20:
             {/* ─── Issue Detail Dialog ─────────────────────────── */}
             <Dialog open={!!selectedTaskId} onOpenChange={open => !open && setSelectedTaskId(null)}>
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">

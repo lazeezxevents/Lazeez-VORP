@@ -28,7 +28,7 @@ EXTRACT THESE FIELDS (fill in null for anything not found):
   "business_name": "string",
   "phone": "string",
   "bank_details": {"title": "string", "iban": "string", "bank_name": "string"},
-  "menu": [{"name": "string", "quantity": "string", "original_price": "string", "discounted_price": "string"}],
+  "menu": [{"name": "string", "quantity": "string", "price": "string"}],
   "address": "string",
   "city": "string (extract from address - look for city names like Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Sialkot, Gujranwala, etc.)",
   "commission": number,
@@ -38,7 +38,7 @@ EXTRACT THESE FIELDS (fill in null for anything not found):
     
 CRITICAL RULES FOR "menu" ARRAY:
 1. Extract EVERY SINGLE ITEM mentioned. Do not limit to 14 items. If there are 50 items, extract all 50.
-2. If the user specifies an absolute discount (e.g., "reduce by 10 RS"), you MUST calculate and return the final mathematical "discounted_price" (e.g., if original is 100 and user says reduce 10, discounted_price must be "90").
+2. Keep only the final agreed price for each item. Do not include discounted prices or discount calculations.
 
 CRITICAL RULES FOR "city":
 1. Extract city name from the address field

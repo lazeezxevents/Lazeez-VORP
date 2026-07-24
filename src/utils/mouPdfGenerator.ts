@@ -7,7 +7,7 @@ interface MOUGenerationData {
     cnic: string;
     business_name: string;
     bank_details: { title: string; iban: string; bank_name: string };
-    menu: Array<{ name: string; quantity: string; original_price: string; discounted_price: string }>;
+    menu: Array<{ name: string; quantity: string; price: string }>;
     address: string;
     category: string;
     commission?: number;
@@ -55,12 +55,11 @@ export const generateEliteMOU = (data: MOUGenerationData) => {
     if (data.menu && data.menu.length > 0) {
         autoTable(doc, {
             startY: currentY,
-            head: [['Product Name', 'Quantity / Description', 'Original Price (PKR)', 'Discounted Price (PKR)']],
+            head: [['Product Name', 'Quantity / Description', 'Agreed Price (PKR)']],
             body: data.menu.map(item => [
                 item.name,
                 item.quantity,
-                `${item.original_price}/-`,
-                `${item.discounted_price}/-`
+                `${item.price}/-`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [237, 0, 79], textColor: [255, 255, 255] },

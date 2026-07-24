@@ -26,8 +26,6 @@ import { useMOUs } from "@/components/hooks/useMOUs";
 import { useMOUVault } from "@/hooks/useMOUVault";
 import { useAuth } from "@/contexts/AuthContext";
 import { MOUCreationWizard } from "@/components/mous/wizard/MOUCreationWizard";
-import { MOUForm } from "@/components/mous/MOUForm";
-import { VendorCreationChoice } from "@/components/vendors/VendorCreationChoice";
 import MOUVaultContent from "@/components/pages/MOUVaultContent";
 import { MOUVersionHistory } from "@/components/mous/MOUVersionHistory";
 import { MOUVersionComparison } from "@/components/mous/MOUVersionComparison";
@@ -50,10 +48,7 @@ export default function MOUs() {
   const { data: vaultItems = [] } = useMOUVault();
   const { isStaff, isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const [editMOU, setEditMOU] = useState<typeof mous[0] | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [historyMOU, setHistoryMOU] = useState<{ id: string; title: string } | null>(null);
   const [compareMOU, setCompareMOU] = useState<{ id: string; title: string } | null>(null);
@@ -62,11 +57,6 @@ export default function MOUs() {
     mou.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (mou.vendor as { name: string } | null)?.name?.toLowerCase()?.includes(searchQuery.toLowerCase())
   );
-
-  const handleEdit = (mou: typeof mous[0]) => {
-    setEditMOU(mou);
-    setFormOpen(true);
-  };
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -114,19 +104,6 @@ export default function MOUs() {
     <DashboardLayout title="MOUs" subtitle="Manage memorandums of understanding">
       {wizardOpen && <MOUCreationWizard onClose={() => setWizardOpen(false)} />}
 
-      <VendorCreationChoice
-        open={choiceOpen}
-        onClose={() => setChoiceOpen(false)}
-        onChooseAI={() => {
-          setChoiceOpen(false);
-          setWizardOpen(true);
-        }}
-        onChooseManual={() => {
-          setChoiceOpen(false);
-          setFormOpen(true);
-        }}
-      />
-
       <Tabs defaultValue="list" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 max-w-xl mx-auto">
           <TabsTrigger value="list" className="gap-2">
@@ -169,9 +146,9 @@ export default function MOUs() {
               />
             </div>
             {isStaff && (
-              <Button onClick={() => setChoiceOpen(true)}>
+              <Button onClick={() => setWizardOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                New MOU
+                Create with AI
               </Button>
             )}
           </div>
@@ -258,10 +235,6 @@ export default function MOUs() {
                               </DropdownMenuItem>
                               {isStaff && (
                                 <>
-                                  <DropdownMenuItem onClick={() => handleEdit(mou)}>
-                                    <PenLine className="w-4 h-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
                                   {mou.status === "draft" && (
                                     <DropdownMenuItem onClick={() => handleSubmitForReview(mou.id)}>
                                       <Send className="w-4 h-4 mr-2" />
@@ -308,13 +281,6 @@ export default function MOUs() {
           <MOUVaultContent />
         </TabsContent>
       </Tabs>
-
-      {/* Form Dialog */}
-      <MOUForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        editMOU={editMOU || undefined}
-      />
 
       {/* Version History Dialog */}
       {historyMOU && (

@@ -55,6 +55,41 @@ export class SupabaseRealtimeService {
   private channels: Map<string, RealtimeChannel> = new Map();
 
   /**
+   * Profiles are loaded separately instead of through a named PostgREST
+   * relationship. This keeps messages working even when a deployed database
+   * uses a different foreign-key constraint name.
+   */
+  private async hydrateMessages(rows: any[]): Promise<Message[]> {
+    if (rows.length === 0) return [];
+    const messageIds = rows.map((row) => row.id);
+    const userIds = [...new Set(rows.map((row) => row.user_id).filter(Boolean))];
+    const [profilesResult, attachmentsResult, reactionsResult] = await Promise.all([
+      userIds.length ? supabase.from('profiles').select('id, full_name, profile_picture_url, main_role, designation').in('id', userIds) : Promise.resolve({ data: [] as any[] }),
+      supabase.from('message_attachments').select('*').in('message_id', messageIds),
+      supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', messageIds),
+    ]);
+
+    const profilesById = new Map((profilesResult.data || []).map((profile: any) => [profile.id, profile]));
+    const attachmentsByMessage = new Map<string, any[]>();
+    (attachmentsResult.data || []).forEach((attachment: any) => {
+      attachmentsByMessage.set(attachment.message_id, [...(attachmentsByMessage.get(attachment.message_id) || []), attachment]);
+    });
+    const reactionsByMessage = new Map<string, Map<string, string[]>>();
+    (reactionsResult.data || []).forEach((reaction: any) => {
+      const grouped = reactionsByMessage.get(reaction.message_id) || new Map<string, string[]>();
+      grouped.set(reaction.emoji, [...(grouped.get(reaction.emoji) || []), reaction.user_id]);
+      reactionsByMessage.set(reaction.message_id, grouped);
+    });
+
+    return rows.map((row) => ({
+      ...row,
+      user: profilesById.get(row.user_id),
+      attachments: attachmentsByMessage.get(row.id) || [],
+      reactions: Array.from((reactionsByMessage.get(row.id) || new Map()).entries()).map(([emoji, user_ids]) => ({ emoji, count: user_ids.length, user_ids })),
+    })) as Message[];
+  }
+
+  /**
    * Subscribe to a channel for real-time messages
    */
   subscribeToChannel(
@@ -91,48 +126,10 @@ export class SupabaseRealtimeService {
           filter: `channel_id=eq.${channelId}`,
         },
         async (payload) => {
-          // Fetch full message with user data
-          const { data: message } = await supabase
-            .from('messages')
-            .select(`
-              *,
-              user:profiles!messages_user_id_fkey(
-                id,
-                full_name,
-                profile_picture_url,
-                main_role,
-                designation
-              ),
-              attachments:message_attachments(*),
-              reactions:message_reactions(emoji, user_id)
-            `)
-            .eq('id', payload.new.id)
-            .single();
-
+          const { data: message } = await supabase.from('messages').select('*').eq('id', payload.new.id).maybeSingle();
           if (message) {
-            // Group reactions by emoji
-            const reactionMap = new Map<string, string[]>();
-            if (message.reactions) {
-              message.reactions.forEach((r: any) => {
-                if (!reactionMap.has(r.emoji)) {
-                  reactionMap.set(r.emoji, []);
-                }
-                reactionMap.get(r.emoji)!.push(r.user_id);
-              });
-            }
-
-            const groupedReactions: MessageReaction[] = Array.from(reactionMap.entries()).map(
-              ([emoji, user_ids]) => ({
-                emoji,
-                count: user_ids.length,
-                user_ids,
-              })
-            );
-
-            callbacks.onMessage!({
-              ...message,
-              reactions: groupedReactions,
-            } as Message);
+            const [hydrated] = await this.hydrateMessages([message]);
+            if (hydrated) callbacks.onMessage!(hydrated);
           }
         }
       );
@@ -149,23 +146,10 @@ export class SupabaseRealtimeService {
           filter: `channel_id=eq.${channelId}`,
         },
         async (payload) => {
-          const { data: message } = await supabase
-            .from('messages')
-            .select(`
-              *,
-              user:profiles!messages_user_id_fkey(
-                id,
-                full_name,
-                profile_picture_url,
-                main_role,
-                designation
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single();
-
+          const { data: message } = await supabase.from('messages').select('*').eq('id', payload.new.id).maybeSingle();
           if (message) {
-            callbacks.onMessageEdit!(message as Message);
+            const [hydrated] = await this.hydrateMessages([message]);
+            if (hydrated) callbacks.onMessageEdit!(hydrated);
           }
         }
       );
@@ -363,19 +347,7 @@ export class SupabaseRealtimeService {
 
     const { data: full, error: fetchError } = await supabase
       .from('messages')
-      .select(
-        `
-        *,
-        user:profiles!messages_user_id_fkey(
-          id,
-          full_name,
-          profile_picture_url,
-          main_role,
-          designation
-        ),
-        attachments:message_attachments(*)
-      `
-      )
+      .select('*')
       .eq('id', inserted.id)
       .single();
 
@@ -384,7 +356,8 @@ export class SupabaseRealtimeService {
       throw fetchError;
     }
 
-    return full as Message;
+    const [hydrated] = await this.hydrateMessages([full]);
+    return hydrated || (full as Message);
   }
 
   /**
@@ -570,18 +543,7 @@ export class SupabaseRealtimeService {
   ): Promise<Message[]> {
     let query = supabase
       .from('messages')
-      .select(`
-        *,
-        user:profiles!messages_user_id_fkey(
-          id,
-          full_name,
-          profile_picture_url,
-          main_role,
-          designation
-        ),
-        attachments:message_attachments(*),
-        reactions:message_reactions(emoji, user_id)
-      `)
+      .select('*')
       .eq('channel_id', channelId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
@@ -598,31 +560,8 @@ export class SupabaseRealtimeService {
       return [];
     }
 
-    // Group reactions by emoji for each message
-    return (data || []).map((message: any) => {
-      const reactionMap = new Map<string, string[]>();
-      if (message.reactions) {
-        message.reactions.forEach((r: any) => {
-          if (!reactionMap.has(r.emoji)) {
-            reactionMap.set(r.emoji, []);
-          }
-          reactionMap.get(r.emoji)!.push(r.user_id);
-        });
-      }
-
-      const groupedReactions: MessageReaction[] = Array.from(reactionMap.entries()).map(
-        ([emoji, user_ids]) => ({
-          emoji,
-          count: user_ids.length,
-          user_ids,
-        })
-      );
-
-      return {
-        ...message,
-        reactions: groupedReactions,
-      } as Message;
-    }).reverse(); // Reverse to get chronological order
+    const hydrated = await this.hydrateMessages(data || []);
+    return hydrated.reverse(); // Reverse to get chronological order
   }
 
   /**

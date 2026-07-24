@@ -41,7 +41,7 @@ const buildSystemPrompt = (category: string, template?: any): string => {
     3. business_name
     4. phone (contact number)
     5. bank_details {title, iban, bank_name}
-    6. menu (Array of products with name, quantity, original_price, discounted_price)
+    6. menu (Array of products with name, quantity, price)
     7. address (complete physical address including city)
     8. city (extract from address if mentioned, e.g., "Karachi", "Lahore", "Islamabad")
     9. commission OR subscription {cost, threshold_orders}
@@ -50,7 +50,7 @@ const buildSystemPrompt = (category: string, template?: any): string => {
     1. ALWAYS review the ENTIRE conversation history to extract ALL data mentioned so far.
     2. MERGE new information with previously extracted data - NEVER lose old data.
     3. When user asks to update a value (e.g., "change 5k to 4k"), identify what field they're referring to based on context and update ONLY that field.
-    4. For menu items: if user provides reduction (e.g., "reduce by 20 RS"), calculate: discounted_price = original_price - reduction.
+    4. Record one final agreed price per menu item. Do not collect, calculate, or mention discounts.
     5. Be conversational but precise. Acknowledge updates clearly (e.g., "Updated subscription cost from 5000 to 4000").
     6. If user asks "what changed?", tell them specifically what you updated.
     7. Track commission as a percentage (e.g., 14 for 14%) and subscription as {cost: number, threshold_orders: number}.
@@ -71,7 +71,7 @@ const buildSystemPrompt = (category: string, template?: any): string => {
         "business_name": "string or null",
         "phone": "string or null",
         "bank_details": {"title": "string or null", "iban": "string or null", "bank_name": "string or null"},
-        "menu": [{"name": "string", "quantity": "string", "original_price": "string", "discounted_price": "string"}],
+        "menu": [{"name": "string", "quantity": "string", "price": "string"}],
         "address": "string or null",
         "city": "string or null",
         "commission": "number or null",
@@ -95,7 +95,7 @@ export const AICollectionLayer: React.FC<AICollectionLayerProps> = ({ onNext, ca
 3. Business Name
 4. Phone Number (Contact)
 5. Bank Details (Title and IBAN/Account Number)
-6. Menu + minimum quantity + discounted price (You can add unlimited items. If reducing the original price, mention by how much, e.g., reduce by 5 RS, 10 RS, etc.)
+6. Menu + minimum quantity + final agreed price (you can add unlimited items)
 7. Complete Physical Address (including city)
 8. Business Terms (Commission %, Subscription Cost, and Order Threshold)
 

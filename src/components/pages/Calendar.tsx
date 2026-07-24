@@ -503,6 +503,17 @@ export default function Calendar() {
                         {dayEvents.length > 3 && (
                           <div className="text-[10px] text-muted-foreground text-center">+{dayEvents.length - 3} more</div>
                         )}
+                        {notesByDate.has(format(day, "yyyy-MM-dd")) && (
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); setSelectedDate(day); }}
+                            className="mt-1 flex w-full items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1 py-0.5 text-left text-[10px] text-primary hover:bg-primary/10"
+                            title={notesByDate.get(format(day, "yyyy-MM-dd"))?.content}
+                          >
+                            <StickyNote className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{notesByDate.get(format(day, "yyyy-MM-dd"))?.content}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -594,6 +605,39 @@ export default function Calendar() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          <Card className="border-primary/20 bg-primary/[0.03]">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <StickyNote className="h-4 w-4 text-primary" />
+                My notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {personalNotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Select a calendar date to add your first private note.</p>
+              ) : (
+                <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                  {[...personalNotes]
+                    .sort((a, b) => a.note_date.localeCompare(b.note_date))
+                    .map((note) => (
+                      <button
+                        key={note.id}
+                        type="button"
+                        onClick={() => {
+                          const date = parseISO(note.note_date);
+                          setCurrentDate(date);
+                          setSelectedDate(date);
+                        }}
+                        className="w-full rounded-lg border bg-background p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <p className="mb-1 text-[11px] font-semibold text-primary">{format(parseISO(note.note_date), "EEE, MMM d")}</p>
+                        <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{note.content}</p>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">

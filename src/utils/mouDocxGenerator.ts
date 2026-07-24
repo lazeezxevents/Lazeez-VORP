@@ -7,7 +7,7 @@ interface DOCXGenerationData {
     cnic: string;
     business_name: string;
     bank_details: { title: string; iban: string; bank_name: string };
-    menu: Array<{ name: string; quantity: string; original_price: string; discounted_price: string }>;
+    menu: Array<{ name: string; quantity: string; price: string }>;
     address: string;
     category: string;
     commission?: number;
@@ -70,7 +70,7 @@ export const generateEliteDOCX = async (data: DOCXGenerationData) => {
                         rows: [
                             new TableRow({
                                 children: [
-                                    "Product Name", "Quantity / Description", "Original Price (PKR)", "Discounted Price (PKR)"
+                                    "Product Name", "Quantity / Description", "Agreed Price (PKR)"
                                 ].map(text => new TableCell({
                                     children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "ffffff" })] })],
                                     shading: { fill: "ed004f" }
@@ -78,7 +78,7 @@ export const generateEliteDOCX = async (data: DOCXGenerationData) => {
                             }),
                             ...(data.menu || []).map(item => new TableRow({
                                 children: [
-                                    item.name, item.quantity, `${item.original_price}/-`, `${item.discounted_price}/-`
+                                    item.name, item.quantity, `${item.price}/-`
                                 ].map(text => new TableCell({
                                     children: [new Paragraph(text)]
                                 }))

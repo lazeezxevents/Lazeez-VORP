@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { WizardSplashScreen } from './WizardSplashScreen';
 import { AIPopupMessage } from './AIPopupMessage';
 import { CategorySelectionStep } from './CategorySelectionStep';
-import { TemplateLearningStep } from './TemplateLearningStep';
 import { AICollectionLayer, Message } from './AICollectionLayer';
 import { MOUGenerationLayer } from './MOUGenerationLayer';
 // using CSS animations
@@ -17,30 +16,19 @@ interface MOUCreationWizardProps {
 }
 
 export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose }) => {
-    const [step, setStep] = useState<'category' | 'learning' | 'collection' | 'generation'>('category');
+    const [step, setStep] = useState<'category' | 'collection' | 'generation'>('category');
     const [category, setCategory] = useState<string>("");
     const [conversation, setConversation] = useState<Message[]>([]);
     const [extractedData, setExtractedData] = useState<any>(null);
-    const [learnedTemplate, setLearnedTemplate] = useState<any>(null);
+    const lockedTemplate = { locked: true, name: 'Lazeez Universal MOU Template' };
     const [systemMessage, setSystemMessage] = useState<string>("Welcome! Let's start by selecting the business category for this MOU.");
 
     const navigate = useNavigate();
 
     const handleCategorySelected = (data: { category: string }) => {
         setCategory(data.category);
-        setStep('learning');
-        setSystemMessage("Upload a sample MOU so I can analyze your requirements.");
-    };
-
-    const handleTemplateLearned = (template: any) => {
-        setLearnedTemplate(template);
         setStep('collection');
-        setSystemMessage("Please provide the business details. I'll automatically detect them as you speak.");
-    };
-
-    const handleSkipLearning = () => {
-        setStep('collection');
-        setSystemMessage("Using standard structure. Please provide the business details.");
+        setSystemMessage("Using the locked Lazeez MOU template. Please provide the business details.");
     };
 
     const handleCollectionComplete = (data: { conversation: Message[], rawData: any }) => {
@@ -56,13 +44,9 @@ export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose })
     };
 
     const handleBack = () => {
-        if (step === 'learning') {
+        if (step === 'collection') {
             setStep('category');
             setSystemMessage("Welcome! Let's start by selecting the business category for this MOU.");
-        }
-        else if (step === 'collection') {
-            setStep('learning');
-            setSystemMessage("Upload a sample MOU so I can analyze your requirements.");
         }
     };
 
@@ -74,7 +58,7 @@ export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose })
                 <div className="flex-1 flex flex-col relative overflow-y-auto">
                     {/* Header / Navigation Buttons */}
                     <div className="absolute top-6 left-6 z-20">
-                        {(step === 'learning' || step === 'collection') && (
+                        {step === 'collection' && (
                             <Button
                                 variant="ghost"
                                 onClick={handleBack}
@@ -96,13 +80,12 @@ export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose })
                     <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50">
                         <div className="w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {step === 'category' && <CategorySelectionStep onNext={handleCategorySelected} />}
-                            {step === 'learning' && <TemplateLearningStep onComplete={handleTemplateLearned} onSkip={handleSkipLearning} />}
-                            {step === 'collection' && <AICollectionLayer category={category} template={learnedTemplate} onNext={handleCollectionComplete} />}
+                            {step === 'collection' && <AICollectionLayer category={category} template={lockedTemplate} onNext={handleCollectionComplete} />}
                             {step === 'generation' && (
                                 <MOUGenerationLayer
                                     category={category}
                                     conversation={conversation}
-                                    template={learnedTemplate}
+                                    template={lockedTemplate}
                                     extractedData={extractedData}
                                     onComplete={handleWorkflowComplete}
                                 />
@@ -113,7 +96,7 @@ export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose })
                     {/* Progress / Footer */}
                     <div className="h-20 border-t border-zinc-100 flex items-center px-10 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.03)] shrink-0">
                         <div className="flex gap-3">
-                            {['category', 'learning', 'collection', 'generation'].map((s, i) => (
+                            {['category', 'collection', 'generation'].map((s, i) => (
                                 <div
                                     key={s}
                                     className={`h-2 w-20 rounded-full transition-all duration-300 ${['category', 'learning', 'collection', 'generation'].indexOf(step) >= i
@@ -124,7 +107,7 @@ export const MOUCreationWizard: React.FC<MOUCreationWizardProps> = ({ onClose })
                             ))}
                         </div>
                         <div className="ml-auto text-sm font-medium text-zinc-400 font-mono uppercase tracking-widest">
-                            Step {['category', 'learning', 'collection', 'generation'].indexOf(step) + 1} of 4
+                            Step {['category', 'collection', 'generation'].indexOf(step) + 1} of 3
                         </div>
                     </div>
                 </div>
