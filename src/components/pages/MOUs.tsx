@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Search, MoreHorizontal, FileText, Download,
-  CheckCircle, PenLine, Trash2, Send, Paperclip, History, Diff, FolderLock, LayoutList
+  CheckCircle, PenLine, Trash2, Send, Paperclip, History, Diff, FolderLock, LayoutList,
+  AlertTriangle, RefreshCw, CalendarClock
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMOUs } from "@/components/hooks/useMOUs";
@@ -92,12 +93,21 @@ export default function MOUs() {
 
   const vaultToday = new Date();
   vaultToday.setHours(0, 0, 0, 0);
+  const thirtyDaysFromNow = new Date(vaultToday);
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+  const hasAutoRenewal = (item: typeof vaultItems[number]) =>
+    typeof item.has_auto_renewal === "boolean"
+      ? item.has_auto_renewal
+      : (item.extracted_terms as Record<string, unknown> | null)?.has_auto_renewal === true;
   const stats = [
     { label: "Total MOUs", value: vaultItems.length, icon: FileText },
     { label: "Active", value: vaultItems.filter((item) => item.extraction_status === "completed" && (!item.effective_start_date || new Date(item.effective_start_date) <= vaultToday) && (!item.effective_end_date || new Date(item.effective_end_date) >= vaultToday)).length, icon: CheckCircle },
     { label: "Pending Review", value: vaultItems.filter((item) => item.extraction_status === "pending" || item.extraction_status === "processing").length, icon: Send },
     { label: "Draft", value: vaultItems.filter((item) => item.extraction_status === "failed").length, icon: PenLine },
     { label: "Legacy", value: vaultItems.filter((item) => item.document_type === "legacy").length, icon: History },
+    { label: "Expiring Soon", value: vaultItems.filter((item) => item.effective_end_date && new Date(item.effective_end_date) >= vaultToday && new Date(item.effective_end_date) <= thirtyDaysFromNow).length, icon: CalendarClock },
+    { label: "Expired", value: vaultItems.filter((item) => item.effective_end_date && new Date(item.effective_end_date) < vaultToday).length, icon: AlertTriangle },
+    { label: "Auto-Renewal On", value: vaultItems.filter(hasAutoRenewal).length, icon: RefreshCw },
   ];
 
   return (
@@ -118,7 +128,7 @@ export default function MOUs() {
       />
 
       <Tabs defaultValue="list" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-2 max-w-xl mx-auto">
           <TabsTrigger value="list" className="gap-2">
             <LayoutList className="w-4 h-4" />
             MOUs Management
