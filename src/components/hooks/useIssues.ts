@@ -40,6 +40,19 @@ export interface CreateIssueInput {
   project_task_id?: string;
 }
 
+const baseIssueSelect = `
+  *,
+  vendor:vendors(name),
+  assignee:profiles!issues_assigned_to_fkey(full_name, email),
+  reporter:profiles!issues_reported_by_fkey(full_name, email)
+`;
+
+const linkedIssueSelect = `
+  ${baseIssueSelect},
+  project:projects(name),
+  project_task:project_tasks(title, project_id)
+`;
+
 export function useIssues() {
   const queryClient = useQueryClient();
 
@@ -48,18 +61,20 @@ export function useIssues() {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("issues") as any)
-        .select(`
-          *,
-          vendor:vendors(name),
-          assignee:profiles!issues_assigned_to_fkey(full_name, email),
-          reporter:profiles!issues_reported_by_fkey(full_name, email),
-          project:projects(name),
-          project_task:project_tasks(title, project_id)
-        `)
+        .select(linkedIssueSelect)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      return data as unknown as Issue[];
+      if (!error) return data as Issue[];
+
+      // Keep the Issue workspace usable if the optional project-link migration
+      // has not yet been applied to a live database.
+      const { data: fallbackData, error: fallbackError } = await (supabase
+        .from("issues") as any)
+        .select(baseIssueSelect)
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) throw fallbackError;
+      return fallbackData as Issue[];
     },
   });
 
@@ -110,19 +125,20 @@ export function useIssue(id: string) {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("issues") as any)
-        .select(`
-          *,
-          vendor:vendors(name),
-          assignee:profiles!issues_assigned_to_fkey(full_name, email),
-          reporter:profiles!issues_reported_by_fkey(full_name, email),
-          project:projects(name),
-          project_task:project_tasks(title, project_id)
-        `)
+        .select(linkedIssueSelect)
         .eq("id", id)
         .maybeSingle();
 
-      if (error) throw error;
-      return data as unknown as Issue | null;
+      if (!error) return data as Issue | null;
+
+      const { data: fallbackData, error: fallbackError } = await (supabase
+        .from("issues") as any)
+        .select(baseIssueSelect)
+        .eq("id", id)
+        .maybeSingle();
+
+      if (fallbackError) throw fallbackError;
+      return fallbackData as Issue | null;
     },
     enabled: !!id,
   });

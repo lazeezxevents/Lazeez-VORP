@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMOUs } from "@/components/hooks/useMOUs";
+import { useMOUVault } from "@/hooks/useMOUVault";
 import { useAuth } from "@/contexts/AuthContext";
 import { MOUCreationWizard } from "@/components/mous/wizard/MOUCreationWizard";
 import { MOUForm } from "@/components/mous/MOUForm";
@@ -45,6 +46,7 @@ const statusColors: Record<string, string> = {
 
 export default function MOUs() {
   const { mous, isLoading, approveMOU, signMOU, deleteMOU, updateMOU } = useMOUs();
+  const { data: vaultItems = [] } = useMOUVault();
   const { isStaff, isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -88,12 +90,14 @@ export default function MOUs() {
     await updateMOU.mutateAsync({ id, status: "pending_review" });
   };
 
+  const vaultToday = new Date();
+  vaultToday.setHours(0, 0, 0, 0);
   const stats = [
-    { label: "Total MOUs", value: mous.length, icon: FileText },
-    { label: "Active", value: mous.filter(m => m.status === "signed" || m.status === "approved").length, icon: CheckCircle },
-    { label: "Pending Review", value: mous.filter(m => m.status === "pending_review").length, icon: Send },
-    { label: "Draft", value: mous.filter(m => m.status === "draft").length, icon: PenLine },
-    { label: "Legacy", value: mous.filter(m => m.status === "legacy").length, icon: History },
+    { label: "Total MOUs", value: vaultItems.length, icon: FileText },
+    { label: "Active", value: vaultItems.filter((item) => item.extraction_status === "completed" && (!item.effective_start_date || new Date(item.effective_start_date) <= vaultToday) && (!item.effective_end_date || new Date(item.effective_end_date) >= vaultToday)).length, icon: CheckCircle },
+    { label: "Pending Review", value: vaultItems.filter((item) => item.extraction_status === "pending" || item.extraction_status === "processing").length, icon: Send },
+    { label: "Draft", value: vaultItems.filter((item) => item.extraction_status === "failed").length, icon: PenLine },
+    { label: "Legacy", value: vaultItems.filter((item) => item.document_type === "legacy").length, icon: History },
   ];
 
   return (

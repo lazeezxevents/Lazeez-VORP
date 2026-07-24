@@ -89,9 +89,20 @@ export function MOUVaultUpload({ open, onOpenChange, preselectedVendorId }: MOUV
       let targetParentId: string | undefined = undefined;
 
       if (parentVaultId && parentVaultId !== "none") {
-        targetParentId = parentVaultId;
-        const parentDoc = existingVendorMOUs?.find(m => m.id === parentVaultId);
-        versionNum = (parentDoc?.version_number || 1) + 1;
+        const selectedDoc = existingVendorMOUs?.find(m => m.id === parentVaultId);
+        const selectedTerms = selectedDoc?.extracted_terms as Record<string, unknown> | null;
+        // Keep every revision directly under the original document. This prevents
+        // separate chains and gives one clean V1.0 -> V2.0 -> V3.0 history.
+        targetParentId = (selectedTerms?._branch_parent_id as string | null) || selectedDoc?.parent_vault_id || parentVaultId;
+        const versionsInFamily = (existingVendorMOUs || []).filter((document) => {
+          const terms = document.extracted_terms as Record<string, unknown> | null;
+          const documentParentId = (terms?._branch_parent_id as string | null) || document.parent_vault_id || null;
+          return document.id === targetParentId || documentParentId === targetParentId;
+        });
+        versionNum = Math.max(1, ...versionsInFamily.map((document) => {
+          const terms = document.extracted_terms as Record<string, unknown> | null;
+          return Number(terms?._branch_version || document.version_number || 1);
+        })) + 1;
       }
 
       // Create vault record

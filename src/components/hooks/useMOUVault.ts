@@ -287,7 +287,7 @@ MANDATORY JSON STRUCTURE (fill missing with null):
 
         const { data: vaultRecord } = await supabase
           .from("mou_vault")
-          .select("vendor_id, vendor:vendors(status, updated_at)")
+        .select("vendor_id, extracted_terms, vendor:vendors(status, updated_at)")
           .eq("id", vaultId)
           .single();
 
@@ -318,7 +318,13 @@ MANDATORY JSON STRUCTURE (fill missing with null):
             party_1_name: jsonResult.party_1_name || null,
             party_2_name: jsonResult.party_2_name || null,
             mou_purpose: jsonResult.mou_purpose || null,
-            extracted_terms: { ...jsonResult, vendor_status_at_extraction: vendorStatus }
+            // Keep branch/version metadata written during upload. Without this,
+            // extraction would turn a daughter document back into a standalone V1.
+            extracted_terms: {
+              ...((vaultRecord?.extracted_terms as Record<string, unknown> | null) || {}),
+              ...jsonResult,
+              vendor_status_at_extraction: vendorStatus,
+            }
           })
           .eq("id", vaultId);
 
