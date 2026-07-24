@@ -15,6 +15,9 @@ import {
   List,
   Loader2,
   Brain,
+  RefreshCw,
+  CalendarDays,
+  CircleAlert,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -76,13 +79,14 @@ const kanbanColumns: IssueStatus[] = ["open", "in_progress", "resolved", "closed
 export default function Issues() {
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [formOpen, setFormOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const [deleteIssue, setDeleteIssue] = useState<Issue | null>(null);
   const [aiIssue, setAiIssue] = useState<Issue | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const { data: issues, isLoading } = useIssues();
+  const { data: issues, isLoading, isError, error, refetch } = useIssues();
   const updateIssue = useUpdateIssue();
   const deleteIssueMutation = useDeleteIssue();
   const { isAdmin } = useAuth();
@@ -93,8 +97,13 @@ export default function Issues() {
       (issue.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
       (issue.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesPriority = priorityFilter === "all" || issue.priority === priorityFilter;
-    return matchesSearch && matchesPriority;
+    const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
+    return matchesSearch && matchesPriority && matchesStatus;
   }) || [];
+
+  const unresolvedIssues = issues?.filter((issue) => issue.status === "open" || issue.status === "in_progress") || [];
+  const criticalIssues = unresolvedIssues.filter((issue) => issue.priority === "critical");
+  const overdueIssues = unresolvedIssues.filter((issue) => issue.due_date && new Date(issue.due_date) < new Date());
 
   const getIssuesByStatus = (status: IssueStatus) =>
     filteredIssues.filter((issue) => issue.status === status);
@@ -125,8 +134,30 @@ export default function Issues() {
     );
   }
 
+  if (isError) {
+    return (
+      <DashboardLayout title="Issue Management" subtitle="Track, prioritize, and resolve operational work">
+        <Card className="border-destructive/40">
+          <CardContent className="p-8 text-center space-y-4">
+            <CircleAlert className="w-10 h-10 text-destructive mx-auto" />
+            <div>
+              <p className="font-semibold">Issues could not load</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {error instanceof Error ? error.message : "Please check your database access and try again."}
+              </p>
+            </div>
+            <Button type="button" variant="outline" onClick={() => void refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout title="Issues" subtitle="Track and resolve vendor issues">
+    <DashboardLayout title="Issue Management" subtitle="Track, prioritize, and resolve operational work">
       <div className="space-y-6 animate-fade-in">
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
@@ -153,8 +184,22 @@ export default function Issues() {
                 <SelectItem value="critical">Critical</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                {kanbanColumns.map((status) => (
+                  <SelectItem key={status} value={status}>{statusLabels[status]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => void refetch()} aria-label="Refresh issues">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
             <div className="flex border border-border rounded-lg p-1">
               <Button
                 variant={viewMode === "kanban" ? "secondary" : "ghost"}
@@ -195,6 +240,25 @@ export default function Issues() {
             </Card>
           ))}
         </div>
+
+        {(criticalIssues.length > 0 || overdueIssues.length > 0) && (
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <CircleAlert className="w-5 h-5 text-warning" />
+                <div>
+                  <p className="font-medium">Attention required</p>
+                  <p className="text-sm text-muted-foreground">
+                    {criticalIssues.length} critical and {overdueIssues.length} overdue issue{overdueIssues.length === 1 ? "" : "s"} need follow-up.
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => { setPriorityFilter("critical"); setStatusFilter("all"); }}>
+                Review critical issues
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Kanban View */}
         {viewMode === "kanban" && (
@@ -272,6 +336,14 @@ export default function Issues() {
                             <Clock className="w-3 h-3" />
                             <span>{formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
                           </div>
+                          {issue.due_date && (
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" />
+                              <span className={new Date(issue.due_date) < new Date() && issue.status !== "resolved" && issue.status !== "closed" ? "text-destructive" : ""}>
+                                Due {formatDistanceToNow(new Date(issue.due_date), { addSuffix: true })}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

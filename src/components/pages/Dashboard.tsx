@@ -8,6 +8,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Users,
+  CircleAlert,
+  FileCheck2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,8 @@ import { VendorCategoryPieChart } from "@/components/dashboard/charts/VendorCate
 import { IssuesByPriorityChart } from "@/components/dashboard/charts/IssuesByPriorityChart";
 import { IssueStatusDonutChart } from "@/components/dashboard/charts/IssueStatusDonutChart";
 import { VendorOnboardingTrendChart } from "@/components/dashboard/charts/VendorOnboardingTrendChart";
+import { Progress } from "@/components/ui/progress";
+import { useMOUVault } from "@/hooks/useMOUVault";
 
 const priorityColors: Record<string, string> = {
   low: "bg-priority-low/10 text-priority-low border-priority-low/20",
@@ -44,6 +48,7 @@ export default function Dashboard() {
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const { data: issues, isLoading: issuesLoading } = useIssues();
   const { data: safiScores, isLoading: safiLoading } = useSafiScore();
+  const { data: vaultItems = [] } = useMOUVault();
   const navigate = useNavigate();
 
   const isLoading = vendorsLoading || issuesLoading || safiLoading;
@@ -112,6 +117,18 @@ export default function Dashboard() {
     ?.filter((v) => v.status === "active")
     ?.slice(0, 4) || [];
 
+  const unresolvedIssues = issues?.filter((issue) => issue.status === "open" || issue.status === "in_progress") || [];
+  const resolvedIssues = issues?.filter((issue) => issue.status === "resolved" || issue.status === "closed") || [];
+  const overdueIssues = unresolvedIssues.filter((issue) => issue.due_date && new Date(issue.due_date) < new Date());
+  const resolutionRate = issues?.length ? Math.round((resolvedIssues.length / issues.length) * 100) : 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const activeVaultMOUs = vaultItems.filter((item) =>
+    item.extraction_status === "completed" &&
+    (!item.effective_start_date || new Date(item.effective_start_date) <= today) &&
+    (!item.effective_end_date || new Date(item.effective_end_date) >= today)
+  ).length;
+
   return (
     <DashboardLayout
       title="Dashboard"
@@ -168,6 +185,40 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">Issue resolution rate</p>
+                <CheckCircle2 className="w-5 h-5 text-success" />
+              </div>
+              <p className="text-3xl font-bold">{resolutionRate}%</p>
+              <Progress value={resolutionRate} aria-label="Issue resolution rate" />
+              <p className="text-xs text-muted-foreground">{resolvedIssues.length} of {issues?.length || 0} issues resolved or closed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">Overdue issue workload</p>
+                <CircleAlert className="w-5 h-5 text-warning" />
+              </div>
+              <p className="text-3xl font-bold">{overdueIssues.length}</p>
+              <p className="text-xs text-muted-foreground">{unresolvedIssues.length} issues currently open or in progress</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">Active MOU agreements</p>
+                <FileCheck2 className="w-5 h-5 text-info" />
+              </div>
+              <p className="text-3xl font-bold">{activeVaultMOUs}</p>
+              <p className="text-xs text-muted-foreground">Validated agreements from the MOU Vault</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* MOU Activity Widget */}
