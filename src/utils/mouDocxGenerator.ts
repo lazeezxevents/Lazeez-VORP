@@ -46,6 +46,31 @@ export const generateEliteDOCX = async (data: DOCXGenerationData) => {
             {
                 properties: {},
                 children: [
+                    // Lazeez Events Branding Header
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: "LAZEEZ EVENTS",
+                                bold: true,
+                                size: 48,
+                                color: "ED004F",
+                            }),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 100 },
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: "Food & Events Platform",
+                                size: 20,
+                                color: "666666",
+                            }),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 },
+                    }),
+                    // MOU Title
                     new Paragraph({
                         children: [
                             new TextRun({

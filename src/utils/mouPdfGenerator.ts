@@ -21,6 +21,25 @@ export const generateEliteMOU = (data: MOUGenerationData) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    // Add Lazeez Events branding at the top
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(237, 0, 79); // Brand color (pink/red)
+    doc.text("LAZEEZ EVENTS", pageWidth / 2, 15, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Food & Events Platform", pageWidth / 2, 22, { align: "center" });
+    
+    // Add decorative line
+    doc.setDrawColor(237, 0, 79);
+    doc.setLineWidth(0.5);
+    doc.line(20, 26, pageWidth - 20, 26);
+    
+    // Reset for content
+    doc.setTextColor(0, 0, 0);
+
     // 1. Prepare Content by replacing placeholders
     let baseTemplate = data.templateText || MOU_TEMPLATE;
     let content = baseTemplate
@@ -46,7 +65,7 @@ export const generateEliteMOU = (data: MOUGenerationData) => {
     doc.setFont("helvetica", "normal");
 
     // Render Section 1
-    let currentY = 20;
+    let currentY = 35;
     const lines = doc.splitTextToSize(sections[0], pageWidth - 40);
     doc.text(lines, 20, currentY);
     currentY += (lines.length * 5) + 5;
