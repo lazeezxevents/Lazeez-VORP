@@ -106,6 +106,16 @@ DROP POLICY IF EXISTS "Users can create channels" ON public.channels;
 DROP POLICY IF EXISTS "Channel owners can update channels" ON public.channels;
 DROP POLICY IF EXISTS "Users can view channel messages" ON public.messages;
 DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+-- Allow this repair script to be run again after a partial SQL Editor run.
+DROP POLICY IF EXISTS "Communication members can view members" ON public.channel_members;
+DROP POLICY IF EXISTS "Communication managers can add members" ON public.channel_members;
+DROP POLICY IF EXISTS "Communication members can update membership" ON public.channel_members;
+DROP POLICY IF EXISTS "Communication managers can remove members" ON public.channel_members;
+DROP POLICY IF EXISTS "Communication users can view channels" ON public.channels;
+DROP POLICY IF EXISTS "Communication channels created through RPC" ON public.channels;
+DROP POLICY IF EXISTS "Communication managers can update channels" ON public.channels;
+DROP POLICY IF EXISTS "Communication users can view messages" ON public.messages;
+DROP POLICY IF EXISTS "Communication users can send messages" ON public.messages;
 
 CREATE POLICY "Communication members can view members"
   ON public.channel_members FOR SELECT TO authenticated
