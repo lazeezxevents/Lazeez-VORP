@@ -3,14 +3,10 @@ import { DashboardLayout } from "@/components/layout";
 import {
   Search,
   Plus,
-  Filter,
   MoreHorizontal,
   Clock,
-  User,
   AlertCircle,
   CheckCircle2,
-  Pause,
-  ArrowUp,
   LayoutGrid,
   List,
   Loader2,
@@ -18,6 +14,9 @@ import {
   RefreshCw,
   CalendarDays,
   CircleAlert,
+  ClipboardList,
+  ListFilter,
+  TimerReset,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -104,6 +103,7 @@ export default function Issues() {
   const unresolvedIssues = issues?.filter((issue) => issue.status === "open" || issue.status === "in_progress") || [];
   const criticalIssues = unresolvedIssues.filter((issue) => issue.priority === "critical");
   const overdueIssues = unresolvedIssues.filter((issue) => issue.due_date && new Date(issue.due_date) < new Date());
+  const resolvedCount = issues?.filter((issue) => issue.status === "resolved" || issue.status === "closed").length || 0;
 
   const getIssuesByStatus = (status: IssueStatus) =>
     filteredIssues.filter((issue) => issue.status === status);
@@ -159,87 +159,95 @@ export default function Issues() {
   return (
     <DashboardLayout title="Issue Management" subtitle="Track, prioritize, and resolve operational work">
       <div className="space-y-6 animate-fade-in">
-        {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="flex gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search issues..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-36">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
-                {kanbanColumns.map((status) => (
-                  <SelectItem key={status} value={status}>{statusLabels[status]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => void refetch()} aria-label="Refresh issues">
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-            <div className="flex border border-border rounded-lg p-1">
-              <Button
-                variant={viewMode === "kanban" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("kanban")}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-              >
-                <List className="w-4 h-4" />
+        {/* Issue workspace */}
+        <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="mb-3 flex items-center gap-2 text-primary">
+                  <ClipboardList className="h-5 w-5" />
+                  <span className="text-sm font-semibold">Operations workspace</span>
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Move every issue to a clear outcome.</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Review workload, focus attention where it is needed, and update progress without leaving the board.
+                </p>
+              </div>
+              <Button className="gap-2 sm:self-start lg:self-auto" onClick={() => { setEditingIssue(null); setFormOpen(true); }}>
+                <Plus className="w-4 h-4" />
+                Create issue
               </Button>
             </div>
-            <Button className="gap-2" onClick={() => { setEditingIssue(null); setFormOpen(true); }}>
-              <Plus className="w-4 h-4" />
-              New Issue
-            </Button>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* Workload snapshot */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">All issues</p>
+              <p className="mt-2 text-2xl font-bold">{issues?.length || 0}</p>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setStatusFilter("open")}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Open</p>
+              <p className="mt-2 text-2xl font-bold text-info">{getIssuesByStatus("open").length}</p>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setStatusFilter("in_progress")}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">In progress</p>
+              <p className="mt-2 text-2xl font-bold text-warning">{getIssuesByStatus("in_progress").length}</p>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => { setPriorityFilter("critical"); setStatusFilter("all"); }}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
+              <p className="mt-2 text-2xl font-bold text-destructive">{criticalIssues.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Completed</p>
+              <p className="mt-2 text-2xl font-bold text-success">{resolvedCount}</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {kanbanColumns.map((status, idx) => (
-            <Card key={status} className="animate-stagger-fade-in" style={{ animationDelay: `${idx * 80}ms` }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const Icon = statusConfig[status].icon;
-                    return <Icon className="w-4 h-4 text-muted-foreground" />;
-                  })()}
-                  <span className="text-sm text-muted-foreground">{statusLabels[status]}</span>
+        {/* Search and board controls */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search issue title, vendor, or description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:flex">
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-full sm:w-36"><ListFilter className="w-4 h-4 mr-2" /><SelectValue placeholder="Priority" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All priority</SelectItem><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All status</SelectItem>
+                    {kanbanColumns.map((status) => <SelectItem key={status} value={status}>{statusLabels[status]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between gap-2 xl:justify-end">
+                <Button variant="outline" size="icon" onClick={() => void refetch()} aria-label="Refresh issues"><RefreshCw className="w-4 h-4" /></Button>
+                <div className="flex rounded-lg border border-border p-1">
+                  <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="sm" className="gap-2" onClick={() => setViewMode("kanban")}><LayoutGrid className="w-4 h-4" /><span className="hidden sm:inline">Board</span></Button>
+                  <Button variant={viewMode === "table" ? "secondary" : "ghost"} size="sm" className="gap-2" onClick={() => setViewMode("table")}><List className="w-4 h-4" /><span className="hidden sm:inline">List</span></Button>
                 </div>
-                <p className="text-2xl font-bold mt-1">{getIssuesByStatus(status).length}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {(criticalIssues.length > 0 || overdueIssues.length > 0) && (
           <Card className="border-warning/30 bg-warning/5">
@@ -262,24 +270,23 @@ export default function Issues() {
 
         {/* Kanban View */}
         {viewMode === "kanban" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {kanbanColumns.map((status, colIdx) => (
-              <div key={status} className="min-w-[280px] animate-stagger-fade-in" style={{ animationDelay: `${colIdx * 100}ms` }}>
+              <section key={status} className="animate-stagger-fade-in rounded-2xl border border-border bg-muted/30 p-3" style={{ animationDelay: `${colIdx * 100}ms` }}>
                 <div className="flex items-center justify-between mb-3 px-1">
                   <div className="flex items-center gap-2">
                     <Badge className={statusConfig[status].color}>
                       {statusLabels[status]}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {getIssuesByStatus(status).length}
-                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">{getIssuesByStatus(status).length}</span>
                   </div>
+                  {status === "in_progress" && <TimerReset className="w-4 h-4 text-warning" />}
                 </div>
                 <div className="space-y-3">
                   {getIssuesByStatus(status).map((issue, issueIdx) => (
                     <Card
                       key={issue.id}
-                      className="cursor-pointer animate-stagger-fade-in hover:shadow-md transition-shadow"
+                      className="cursor-pointer animate-stagger-fade-in border-border/80 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                       style={{ animationDelay: `${(colIdx * 100) + (issueIdx * 50)}ms` }}
                       onClick={() => setSelectedIssue(issue)}
                     >
@@ -323,15 +330,13 @@ export default function Issues() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <p className="font-medium text-sm text-foreground mb-1">
+                        <p className="font-semibold text-sm text-foreground mb-1 leading-5">
                           {issue.title}
                         </p>
-                        {issue.vendor && (
-                          <p className="text-xs text-muted-foreground mb-3">
-                            {issue.vendor.name}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="min-h-5 text-xs text-muted-foreground mb-3">
+                          {issue.vendor?.name || "No vendor linked"}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             <span>{formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
@@ -349,12 +354,12 @@ export default function Issues() {
                     </Card>
                   ))}
                   {getIssuesByStatus(status).length === 0 && (
-                    <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
-                      No issues
+                    <div className="p-6 text-center text-sm text-muted-foreground border border-dashed rounded-xl bg-background/60">
+                      No issues in this stage
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
