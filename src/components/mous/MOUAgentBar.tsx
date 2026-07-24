@@ -12,6 +12,7 @@ import { chatWithGroq, isGroqConfigured } from "@/lib/groqClient";
 import { useVendors } from "@/hooks/useVendors";
 import { useMOUVault, MOUVaultItem } from "@/hooks/useMOUVault";
 import { useMOUs } from "@/components/hooks/useMOUs";
+import { useEffect, useRef, useState } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -103,6 +104,7 @@ function offlineReply(query: string): string {
 
 // ── Speech recognition types ──────────────────────────────────────────────────
 interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
   results: { length: number; [i: number]: { [i: number]: { transcript: string } } };
 }
 interface SpeechRecognition extends EventTarget {
@@ -113,8 +115,8 @@ interface SpeechRecognition extends EventTarget {
 }
 declare global {
   interface Window {
-    SpeechRecognition: { new(): SpeechRecognition };
-    webkitSpeechRecognition: { new(): SpeechRecognition };
+    SpeechRecognition?: { new(): SpeechRecognition };
+    webkitSpeechRecognition?: { new(): SpeechRecognition };
   }
 }
 
@@ -124,6 +126,7 @@ export function MOUAgentBar({ onSuccess, className }: MOUAgentBarProps) {
   const [query, setQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -154,27 +157,51 @@ export function MOUAgentBar({ onSuccess, className }: MOUAgentBarProps) {
 
   // Speech recognition
   useEffect(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    recognitionRef.current = new SR();
-    recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = "en-US";
-    recognitionRef.current.onstart = () => setIsListening(true);
-    recognitionRef.current.onend = () => setIsListening(false);
-    recognitionRef.current.onresult = (e: SpeechRecognitionEvent) => {
-      const t = Array.from({ length: e.results.length }, (_, i) => e.results[i][0].transcript).join("");
-      setQuery(t);
+    const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionConstructor) return;
+    const recognition = new SpeechRecognitionConstructor();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-PK";
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        transcript += event.results[index][0].transcript;
+      }
+      setQuery(transcript.trim());
     };
-    recognitionRef.current.onerror = (e: any) => {
+    recognition.onerror = (event: any) => {
       setIsListening(false);
-      if (e.error !== "no-speech") toast.error("Voice error: " + e.error);
+      const messages: Record<string, string> = {
+        "not-allowed": "Please allow microphone access to use voice input.",
+        "service-not-allowed": "Voice input is blocked by your browser settings.",
+        "no-speech": "No speech was detected. Please try again.",
+        network: "Voice recognition is unavailable. Check your internet connection.",
+      };
+      toast.error(messages[event.error] || "Voice input could not start. Please try again.");
     };
+    recognitionRef.current = recognition;
+    setVoiceSupported(true);
+    return () => recognition.abort();
   }, []);
 
   const toggleListening = () => {
-    if (!recognitionRef.current) { toast.error("Voice not supported"); return; }
-    isListening ? recognitionRef.current.stop() : (setQuery(""), recognitionRef.current.start());
+    if (!recognitionRef.current) {
+      toast.error("Voice input is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      return;
+    }
+    try {
+      setQuery("");
+      recognitionRef.current.start();
+    } catch {
+      toast.error("Voice input is already starting. Please try again in a moment.");
+    }
   };
 
   const handleSend = async () => {
@@ -292,9 +319,8 @@ export function MOUAgentBar({ onSuccess, className }: MOUAgentBarProps) {
 
       {/* ── Chat Panel ── */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50">
-          <Card className="flex flex-col shadow-2xl border-primary/20 bg-white/98 dark:bg-card/98 backdrop-blur-xl overflow-hidden"
-            style={{ height: "500px" }}>
+        <div className="mt-2 z-50 sm:absolute sm:top-full sm:left-0 sm:right-0">
+          <Card className="flex h-[min(70vh,500px)] flex-col overflow-hidden border-primary/20 bg-white/98 shadow-2xl backdrop-blur-xl dark:bg-card/98 sm:h-[500px]">
 
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
@@ -406,7 +432,9 @@ export function MOUAgentBar({ onSuccess, className }: MOUAgentBarProps) {
                   )}
                   disabled={isProcessing}
                 />
-                <Button size="icon" variant="ghost" onClick={toggleListening}
+                <Button size="icon" variant="ghost" onClick={toggleListening} disabled={isProcessing}
+                  aria-label={isListening ? "Stop voice input" : "Start voice input"}
+                  title={voiceSupported ? (isListening ? "Stop voice input" : "Speak your question") : "Voice input requires Chrome or Edge"}
                   className={cn("h-7 w-7 rounded-lg transition-all",
                     isListening ? "text-destructive bg-destructive/10 animate-pulse" : "text-muted-foreground hover:text-primary")}>
                   {isListening ? <StopCircle className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}

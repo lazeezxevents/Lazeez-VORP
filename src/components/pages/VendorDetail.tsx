@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   FileText, Users, Ticket, Calendar, Download, Eye,
   Edit, Clock, CheckCircle2, DollarSign, TrendingUp,
   MessageSquare, History, BarChart3, Archive, Plus,
-  Trash2, AlertCircle, Loader2, GitBranch
+  Trash2, AlertCircle, Loader2, GitBranch, ChevronDown, ChevronUp
 } from "lucide-react";
 import { useVendor, useDeleteVendor } from "@/hooks/useVendors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -106,6 +106,7 @@ export default function VendorDetail() {
   const [versionCheckerOpen, setVersionCheckerOpen] = useState(false);
   const [parentVaultId, setParentVaultId] = useState("");
   const [daughterVaultId, setDaughterVaultId] = useState("");
+  const [expandedRenewalId, setExpandedRenewalId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string; isImage: boolean; isPdf: boolean } | null>(null);
 
@@ -553,12 +554,12 @@ export default function VendorDetail() {
                 <div className="space-y-6">
                   {/* Vault Documents Section */}
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Archive className="w-5 h-5" />
                         Vault Documents
                       </CardTitle>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {unbranchedVaultItems.length >= 2 && (
                           <Button size="sm" variant="outline" onClick={() => setVersionCheckerOpen(true)} className="gap-2">
                             <GitBranch className="w-4 h-4" />
@@ -579,9 +580,9 @@ export default function VendorDetail() {
                           {[1, 2].map((i) => <Skeleton key={i} className="h-24" />)}
                         </div>
                       ) : vaultItems && vaultItems.length > 0 ? (
-                        <div className="grid gap-3">
+                        <div className="grid min-w-0 gap-3">
                           {vaultItems.map((vaultItem) => (
-                            <div key={vaultItem.id} className="space-y-3">
+                            <div key={vaultItem.id} className="min-w-0 space-y-2">
                               <MOUVaultCard
                                 item={vaultItem}
                                 showVendor={false}
@@ -596,12 +597,24 @@ export default function VendorDetail() {
                                 }}
                               />
                               {vaultItem.effective_start_date && (
-                                <div className="ml-4">
-                                  <MOURenewalTimeline
-                                    item={vaultItem}
-                                    vendorStatus={vendor.status}
-                                    compact
-                                  />
+                                <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/20">
+                                  <Button
+                                    variant="ghost"
+                                    className="h-auto w-full justify-between px-3 py-2 text-xs hover:bg-muted/50"
+                                    onClick={() => setExpandedRenewalId((current) => current === vaultItem.id ? null : vaultItem.id)}
+                                  >
+                                    View renewal timeline
+                                    {expandedRenewalId === vaultItem.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                  </Button>
+                                  {expandedRenewalId === vaultItem.id && (
+                                    <div className="border-t border-border/60 p-3">
+                                      <MOURenewalTimeline
+                                        item={vaultItem}
+                                        vendorStatus={vendor.status}
+                                        compact
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

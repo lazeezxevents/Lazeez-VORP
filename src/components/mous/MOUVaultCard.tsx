@@ -167,7 +167,7 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
                 <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm text-foreground truncate">
+                <p className="break-words text-sm font-medium leading-5 text-foreground line-clamp-2" title={item.document_name}>
                   {item.document_name}
                 </p>
                 {showVendor && item.vendor && (
@@ -205,7 +205,7 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" aria-label={`Document actions for ${item.document_name}`}>
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
