@@ -64,8 +64,8 @@ export function useProjects() {
                 .select("*, vendors(name)")
                 .order("created_at", { ascending: false });
 
-            // Only admins see EVERYTHING. 
-            // Others (including managers/staff) only see projects where they are manager or assigned.
+            // Only admins see everything. Other users can always see projects they
+            // created, manage, or have work assigned on.
             if (!isAdmin) {
                 // First get project IDs where user has tasks
                 const { data: taskProjects } = await supabase
@@ -77,9 +77,9 @@ export function useProjects() {
 
                 // Construct filter: manager_id = user.id OR id is in assignedProjectIds
                 if (assignedProjectIds.length > 0) {
-                    query = query.or(`manager_id.eq.${user.id},id.in.(${assignedProjectIds.join(',')})`);
+                    query = query.or(`manager_id.eq.${user.id},created_by.eq.${user.id},id.in.(${assignedProjectIds.join(',')})`);
                 } else {
-                    query = query.eq('manager_id', user.id);
+                    query = query.or(`manager_id.eq.${user.id},created_by.eq.${user.id}`);
                 }
             }
 

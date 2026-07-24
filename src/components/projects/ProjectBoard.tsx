@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout";
 import { useProjects, useProjectTasks, Project, ProjectTask } from "@/hooks/useProjects";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,6 +110,18 @@ export default function ProjectBoard() {
 
     const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
 
+    // Open the most recent accessible project automatically so users land on
+    // useful work instead of an empty board after a refresh.
+    useEffect(() => {
+        if (!selectedProjectId && projects.length > 0) setSelectedProjectId(projects[0].id);
+    }, [projects, selectedProjectId]);
+
+    useEffect(() => {
+        setSelectedTasks(new Set());
+        setSelectedTaskId(null);
+        setSelectedSprintId("all");
+    }, [selectedProjectId]);
+
     // Filter tasks
     const filteredTasks = useMemo(() => {
         let baseTasks = tasks;
@@ -138,7 +150,7 @@ export default function ProjectBoard() {
             t.assignee?.full_name?.toLowerCase().includes(q) ||
             t.issue_key?.toLowerCase().includes(q)
         );
-    }, [tasks, searchQuery, activeTab]);
+    }, [tasks, searchQuery, activeTab, selectedSprintId, selectedPriority, selectedAssigneeId]);
 
     // Stats
     const taskStats = useMemo(() => {
@@ -210,7 +222,7 @@ export default function ProjectBoard() {
     const handleCreateProject = async () => {
         if (!newProjectData.name.trim() || createProject.isPending) return;
         try {
-            await createProject.mutateAsync({
+            const createdProject = await createProject.mutateAsync({
                 name: newProjectData.name,
                 description: newProjectData.description || null,
                 vendor_id: newProjectData.vendor_id || null,
@@ -220,6 +232,7 @@ export default function ProjectBoard() {
                 end_date: newProjectData.end_date || null,
                 key_prefix: newProjectData.key_prefix.toUpperCase().trim()
             });
+            setSelectedProjectId(createdProject.id);
             setNewProjectData({ name: "", description: "", vendor_id: "", status: "planning", start_date: "", end_date: "", manager_id: "", key_prefix: "LAZ" });
             setCreateProjectOpen(false);
         } catch { /* error handled by mutation onError */ }
@@ -262,13 +275,13 @@ export default function ProjectBoard() {
 
     return (
         <DashboardLayout title="Project Board" subtitle="Manage vendor operations, sprints, and team tasks.">
-            <div className="space-y-4 h-full flex flex-col">
+            <div className="flex h-full min-w-0 flex-col space-y-4">
                 {/* Top Bar: Project Selector + Actions */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="gap-2 text-left justify-between min-w-[220px]">
+                                <Button variant="outline" className="min-w-0 flex-1 justify-between gap-2 text-left sm:min-w-[220px]">
                                     <div className="flex items-center gap-2 truncate">
                                         <Briefcase className="w-4 h-4 text-primary shrink-0" />
                                         <span className="truncate">{selectedProject?.name || "Select Project"}</span>
@@ -276,7 +289,7 @@ export default function ProjectBoard() {
                                     <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-[320px]">
+                            <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[320px]">
                                 {projects.map(p => (
                                     <DropdownMenuItem key={p.id} onClick={() => setSelectedProjectId(p.id)} className="flex flex-col items-start gap-0.5 py-2">
                                         <div className="flex items-center justify-between w-full">
@@ -308,13 +321,13 @@ export default function ProjectBoard() {
                             </DropdownMenu>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="relative flex-1 sm:w-56">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                        <div className="relative min-w-[180px] flex-1 sm:w-56">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input placeholder="Search tasks..." className="pl-8 h-9" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         {activeTab === 'board' && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 sm:flex-none sm:overflow-visible sm:pb-0">
                                 <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
                                     <SelectTrigger className="h-9 w-[130px] text-[10px] font-semibold">
                                         <Zap className="w-3 h-3 text-amber-500 mr-2" />
@@ -353,8 +366,8 @@ export default function ProjectBoard() {
                                 </Select>
                             </div>
                         )}
-                        <Button size="sm" className="gap-1.5 h-9" onClick={() => setCreateProjectOpen(true)}><Plus className="w-4 h-4" />Project</Button>
-                        {selectedProjectId && <Button size="sm" className="gap-1.5 h-9" onClick={() => setCreateTaskOpen(true)}><Plus className="w-4 h-4" />Task</Button>}
+                        <Button size="sm" className="h-9 gap-1.5" onClick={() => setCreateProjectOpen(true)}><Plus className="w-4 h-4" />Project</Button>
+                        {selectedProjectId && <Button size="sm" className="h-9 gap-1.5" onClick={() => setCreateTaskOpen(true)}><Plus className="w-4 h-4" />Task</Button>}
                     </div>
                 </div>
 
@@ -397,7 +410,7 @@ export default function ProjectBoard() {
 
                         {/* Tabs: Board / Workload */}
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                            <TabsList className="w-fit">
+                            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/60 p-1">
                                 <TabsTrigger value="board" className="gap-1.5"><BarChart3 className="w-3.5 h-3.5" />Board</TabsTrigger>
                                 <TabsTrigger value="backlog" className="gap-1.5"><List className="w-3.5 h-3.5" />Backlog</TabsTrigger>
                                 <TabsTrigger value="roadmap" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" />Roadmap</TabsTrigger>
@@ -411,7 +424,7 @@ export default function ProjectBoard() {
                             {/* ─── Board Tab ─────────────────────────────── */}
                             <TabsContent value="board" className="flex-1 overflow-x-auto min-h-0 pb-4 mt-3">
                                 <DragDropContext onDragEnd={onDragEnd}>
-                                    <div className="flex gap-3 h-full min-w-[900px]">
+                                    <div className="flex h-full min-w-[860px] gap-3 pb-1">
                                         {COLUMNS.map(column => {
                                             const colTasks = filteredTasks.filter(t => t.status === column.id);
                                             return (
@@ -1065,13 +1078,13 @@ export default function ProjectBoard() {
 
             {/* ─── Create Project Dialog ─────────────────────────── */}
             <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
-                <DialogContent className="sm:max-w-[520px]">
+                <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-[520px]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-primary" />Create New Project</DialogTitle>
                         <DialogDescription>Organize vendor operations and team tasks.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Project Name *</Label>
                                 <Input value={newProjectData.name} onChange={e => setNewProjectData(p => ({ ...p, name: e.target.value }))} placeholder="e.g., Vendor Onboarding Q2" />
@@ -1085,7 +1098,7 @@ export default function ProjectBoard() {
                             <Label className="text-xs">Description</Label>
                             <Textarea value={newProjectData.description} onChange={e => setNewProjectData(p => ({ ...p, description: e.target.value }))} placeholder="Brief description of the project..." rows={2} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Linked Vendor</Label>
                                 <Select value={newProjectData.vendor_id} onValueChange={v => setNewProjectData(p => ({ ...p, vendor_id: v }))}>
@@ -1101,7 +1114,7 @@ export default function ProjectBoard() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Status</Label>
                                 <Select value={newProjectData.status} onValueChange={v => setNewProjectData(p => ({ ...p, status: v as Project['status'] }))}>
@@ -1128,13 +1141,13 @@ export default function ProjectBoard() {
 
             {/* ─── Create Task Dialog ────────────────────────────── */}
             <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2"><Flag className="w-5 h-5 text-primary" />Add New Task</DialogTitle>
                         <DialogDescription>Add a task to {selectedProject?.name || "the project"}.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Issue Type *</Label>
                                 <Select value={newTaskData.issue_type} onValueChange={v => setNewTaskData(p => ({ ...p, issue_type: v as ProjectTask['issue_type'] }))}>
@@ -1170,7 +1183,7 @@ export default function ProjectBoard() {
                             <Label className="text-xs">Description</Label>
                             <Textarea value={newTaskData.description} onChange={e => setNewTaskData(p => ({ ...p, description: e.target.value }))} placeholder="Task details..." rows={2} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Priority</Label>
                                 <Select value={newTaskData.priority} onValueChange={v => setNewTaskData(p => ({ ...p, priority: v as ProjectTask['priority'] }))}>
@@ -1196,7 +1209,7 @@ export default function ProjectBoard() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Sprint</Label>
                                 <Select value={newTaskData.sprint_id || "backlog"} onValueChange={v => setNewTaskData(p => ({ ...p, sprint_id: v === "backlog" ? null : v }))}>
@@ -1218,7 +1231,7 @@ export default function ProjectBoard() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5"><Label className="text-xs">Start Date</Label><Input type="date" value={newTaskData.start_date} onChange={e => setNewTaskData(p => ({ ...p, start_date: e.target.value }))} /></div>
                             <div className="space-y-1.5"><Label className="text-xs">Due Date</Label><Input type="date" value={newTaskData.due_date} onChange={e => setNewTaskData(p => ({ ...p, due_date: e.target.value }))} /></div>
                         </div>
