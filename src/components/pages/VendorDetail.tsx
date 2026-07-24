@@ -13,7 +13,7 @@ import {
   FileText, Users, Ticket, Calendar, Download, Eye,
   Edit, Clock, CheckCircle2, DollarSign, TrendingUp,
   MessageSquare, History, BarChart3, Archive, Plus,
-  Trash2, AlertCircle, Loader2
+  Trash2, AlertCircle, Loader2, GitBranch
 } from "lucide-react";
 import { useVendor, useDeleteVendor } from "@/hooks/useVendors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +28,7 @@ import { VendorTimeline } from "@/components/vendors/VendorTimeline";
 import { VendorKPICard } from "@/components/vendors/VendorKPICard";
 import { VendorRemarks } from "@/components/vendors/VendorRemarks";
 import { VendorExportButton } from "@/components/vendors/VendorExportButton";
-import { useMOUVaultByVendor } from "@/hooks/useMOUVault";
+import { useMOUVaultByVendor, useUpdateVaultItem } from "@/hooks/useMOUVault";
 import { MOUVaultCard } from "@/components/mous/MOUVaultCard";
 import { MOUVaultUpload } from "@/components/mous/MOUVaultUpload";
 import { MOUDocumentViewer } from "@/components/mous/MOUDocumentViewer";
@@ -48,9 +48,18 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
@@ -94,11 +103,15 @@ export default function VendorDetail() {
   const [vaultUploadOpen, setVaultUploadOpen] = useState(false);
   const [viewerVaultItem, setViewerVaultItem] = useState<MOUVaultItem | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [versionCheckerOpen, setVersionCheckerOpen] = useState(false);
+  const [parentVaultId, setParentVaultId] = useState("");
+  const [daughterVaultId, setDaughterVaultId] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string; isImage: boolean; isPdf: boolean } | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useVendor(id || "");
   const { data: vaultItems, isLoading: vaultLoading } = useMOUVaultByVendor(id);
+  const updateVaultItem = useUpdateVaultItem();
   const deleteVendorMutation = useDeleteVendor();
 
   // Fetch assigned employees
@@ -179,6 +192,27 @@ export default function VendorDetail() {
   });
 
   const deleteDocument = useDeleteDocument();
+
+  const unbranchedVaultItems = (vaultItems || []).filter((item) => !item.parent_vault_id);
+
+  const handleMakeVersion = async () => {
+    if (!parentVaultId || !daughterVaultId || parentVaultId === daughterVaultId || !vaultItems) return;
+    const parent = vaultItems.find((item) => item.id === parentVaultId);
+    if (!parent) return;
+
+    const rootId = parent.parent_vault_id || parent.id;
+    const family = vaultItems.filter((item) => item.id === rootId || item.parent_vault_id === rootId);
+    const nextVersion = Math.max(1, ...family.map((item) => item.version_number || 1)) + 1;
+
+    await updateVaultItem.mutateAsync({
+      id: daughterVaultId,
+      parent_vault_id: rootId,
+      version_number: nextVersion,
+    });
+    setVersionCheckerOpen(false);
+    setParentVaultId("");
+    setDaughterVaultId("");
+  };
 
   const handleDeleteVendor = async () => {
     if (!id) return;
@@ -524,12 +558,20 @@ export default function VendorDetail() {
                         <Archive className="w-5 h-5" />
                         Vault Documents
                       </CardTitle>
-                      {isStaff && (
-                        <Button size="sm" onClick={() => setVaultUploadOpen(true)} className="gap-2">
-                          <Plus className="w-4 h-4" />
-                          Upload
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {unbranchedVaultItems.length >= 2 && (
+                          <Button size="sm" variant="outline" onClick={() => setVersionCheckerOpen(true)} className="gap-2">
+                            <GitBranch className="w-4 h-4" />
+                            Version Checker ({unbranchedVaultItems.length})
+                          </Button>
+                        )}
+                        {isStaff && (
+                          <Button size="sm" onClick={() => setVaultUploadOpen(true)} className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            Upload
+                          </Button>
+                        )}
+                      </div>
                     </CardHeader>
                     <CardContent>
                       {vaultLoading ? (
@@ -958,6 +1000,50 @@ export default function VendorDetail() {
         onOpenChange={setVaultUploadOpen}
         preselectedVendorId={id}
       />
+
+      <Dialog open={versionCheckerOpen} onOpenChange={setVersionCheckerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitBranch className="w-5 h-5" />
+              Version Checker
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This vendor has {unbranchedVaultItems.length} standalone vault documents. Choose the original MOU and the document that should become its next version.
+            </p>
+            <div className="space-y-2">
+              <Label>Original MOU (V1.0)</Label>
+              <Select value={parentVaultId} onValueChange={setParentVaultId}>
+                <SelectTrigger><SelectValue placeholder="Select original MOU" /></SelectTrigger>
+                <SelectContent>
+                  {unbranchedVaultItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.document_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Existing MOU to make V2.0</Label>
+              <Select value={daughterVaultId} onValueChange={setDaughterVaultId}>
+                <SelectTrigger><SelectValue placeholder="Select daughter MOU" /></SelectTrigger>
+                <SelectContent>
+                  {unbranchedVaultItems.filter((item) => item.id !== parentVaultId).map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.document_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionCheckerOpen(false)}>Cancel</Button>
+            <Button onClick={() => void handleMakeVersion()} disabled={!parentVaultId || !daughterVaultId || updateVaultItem.isPending}>
+              Make Daughter Version
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* MOU Document Viewer */}
       <MOUDocumentViewer
