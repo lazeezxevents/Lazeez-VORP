@@ -14,6 +14,7 @@ export const PERMISSIONS = {
     ISSUES: {
         VIEW: "issues.view",
         MANAGE: "issues.manage",
+        CREATE_TASK: "issues.create_task",
     },
     MOUS: {
         VIEW: "mous.view",

@@ -181,6 +181,7 @@ INSERT INTO public.app_permissions (name, slug, module, description) VALUES
   ('Manage Issues',          'issues.manage',          'issues',    'Create and update issues'),
   ('Assign Issues',          'issues.assign',          'issues',    'Assign issues to team members'),
   ('Resolve Issues',         'issues.resolve',         'issues',    'Mark issues as resolved'),
+  ('Create Tasks',           'issues.create_task',     'issues',    'Create project tasks from issues'),
   ('View MOUs',              'mous.view',              'mous',      'View MOU list'),
   ('Manage MOUs',            'mous.manage',            'mous',      'Create and edit MOUs'),
   ('Approve MOUs',           'mous.approve',           'mous',      'Approve pending MOUs'),

@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Sparkles,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -586,6 +587,25 @@ export default function Calendar() {
                             {selectedNote && (
                               <Button variant="ghost" size="sm" onClick={() => setNoteDraft("")} disabled={isSavingNote}>Clear</Button>
                             )}
+                            {selectedNote && (
+                              <Button variant="destructive" size="sm" onClick={async () => {
+                                if (!selectedDate || !user?.id) return;
+                                const noteDate = format(selectedDate, "yyyy-MM-dd");
+                                setIsSavingNote(true);
+                                try {
+                                  await (supabase as any).from("calendar_personal_notes").delete().eq("user_id", user.id).eq("note_date", noteDate);
+                                  await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+                                  setNoteDraft("");
+                                  toast.success("Note deleted");
+                                } catch {
+                                  toast.error("Failed to delete note");
+                                } finally {
+                                  setIsSavingNote(false);
+                                }
+                              }} disabled={isSavingNote}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button size="sm" onClick={handleSavePersonalNote} disabled={isSavingNote || noteDraft.trim() === (selectedNote?.content || "")}>
                               {isSavingNote ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <StickyNote className="mr-2 h-3.5 w-3.5" />}
                               Save note
@@ -636,6 +656,24 @@ export default function Calendar() {
                     ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Elite Tip for Notes */}
+          <Card className="bg-primary/5 border-primary/20 shadow-glow overflow-hidden relative group">
+            <div className="absolute -right-4 -top-4 w-12 h-12 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            <CardContent className="p-4 relative z-10">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Elite Tip</p>
+                  <p className="text-[11px] text-zinc-600 leading-relaxed font-poppins">
+                    <strong>Drag and drop</strong> any event to a new date to instantly trigger the reschedule workflow. Legal dates update seamlessly across the system.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
           <Card>

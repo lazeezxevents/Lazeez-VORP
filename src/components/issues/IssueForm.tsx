@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import { PERMISSIONS } from "@/lib/permissions";
 import {
   Dialog,
   DialogContent,
@@ -70,7 +71,9 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
   const createIssue = useCreateIssue();
   const updateIssue = useUpdateIssue();
   const { data: vendors } = useVendors();
-  const { user, profile } = useAuth();
+  const { user, profile, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
+  const canCreateTask = hasPermission(PERMISSIONS.ISSUES.CREATE_TASK);
   const { data: employees = [] } = useQuery({
     queryKey: ["issue-assignees"],
     queryFn: async () => {
@@ -280,7 +283,34 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                 name="project_task_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project task (optional)</FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Project task (optional)</FormLabel>
+                      {selectedProjectId !== "none" && canCreateTask && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5"
+                          onClick={() => {
+                            const taskTitle = prompt("Enter task title:");
+                            if (taskTitle && selectedProjectId !== "none") {
+                              (supabase.from("project_tasks") as any).insert({
+                                project_id: selectedProjectId,
+                                title: taskTitle,
+                                assigned_to: form.getValues("assigned_to") === "none" ? null : form.getValues("assigned_to"),
+                              }).select().single().then(({ data }) => {
+                                if (data) {
+                                  form.setValue("project_task_id", data.id);
+                                  queryClient.invalidateQueries({ queryKey: ["issue-project-tasks", selectedProjectId] });
+                                }
+                              });
+                            }
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                     <Select onValueChange={field.onChange} value={field.value} disabled={selectedProjectId === "none"}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder={selectedProjectId === "none" ? "Choose a project first" : "Select project task"} /></SelectTrigger>
