@@ -59,10 +59,11 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
       // If it's already a full URL (https://...) use it directly
       if (!resolvedUrl.startsWith("http")) {
         // Bare storage path — construct public URL
-        const { data } = supabase.storage
+        const { data, error } = await supabase.storage
           .from("mou-vault")
-          .getPublicUrl(resolvedUrl);
-        resolvedUrl = data.publicUrl;
+          .createSignedUrl(resolvedUrl, 60 * 60);
+        if (error || !data?.signedUrl) throw error || new Error("Could not create document URL");
+        resolvedUrl = data.signedUrl;
       }
 
       setSignedUrl(resolvedUrl);

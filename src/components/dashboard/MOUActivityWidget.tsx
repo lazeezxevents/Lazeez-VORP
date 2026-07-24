@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format, differenceInDays, addDays, startOfDay } from "date-fns";
 import { FileText, Clock, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useMOUVault, type MOUVaultItem } from "@/hooks/useMOUVault";
+import { MOUDocumentViewer } from "@/components/mous/MOUDocumentViewer";
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -25,6 +26,7 @@ const statusColors: Record<string, string> = {
 
 export function MOUActivityWidget() {
   const navigate = useNavigate();
+  const [viewerItem, setViewerItem] = useState<MOUVaultItem | null>(null);
   const { data: vaultItems = [], isLoading, isError, error } = useMOUVault();
 
   const { stats, expiringItems, recentActivity } = useMemo(() => {
@@ -229,7 +231,8 @@ export function MOUActivityWidget() {
                   {recentActivity.map((activity) => (
                     <div
                       key={activity.id}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setViewerItem(activity)}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4 text-primary" />
@@ -263,6 +266,12 @@ export function MOUActivityWidget() {
           </CardContent>
         </Card>
       </div>
+
+      <MOUDocumentViewer
+        item={viewerItem}
+        open={!!viewerItem}
+        onOpenChange={(open) => !open && setViewerItem(null)}
+      />
     </div>
   );
 }

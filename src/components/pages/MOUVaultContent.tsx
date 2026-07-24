@@ -89,15 +89,18 @@ export default function MOUVaultContent() {
     if (!vaultItems) return { total: 0, pending: 0, completed: 0, expiringSoon: 0 };
 
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     return {
       total: vaultItems.length,
       pending: vaultItems.filter((i) => i.extraction_status === "pending" || i.extraction_status === "processing").length,
       completed: vaultItems.filter((i) => i.extraction_status === "completed").length,
-      expiringSoon: vaultItems.filter((i) =>
-        i.effective_end_date && new Date(i.effective_end_date) <= thirtyDays
-      ).length,
+      expiringSoon: vaultItems.filter((i) => {
+        if (!i.effective_end_date) return false;
+        const endDate = new Date(i.effective_end_date);
+        return endDate >= now && endDate <= thirtyDays;
+      }).length,
     };
   }, [vaultItems]);
 

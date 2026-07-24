@@ -245,14 +245,13 @@ export function useNotifications() {
           .from("issues")
           .select(`
             *,
-            vendors(name),
-            creator:profiles!issues_created_by_fkey(full_name, avatar_url)
+            vendors(name)
           `)
           .eq("assigned_to", user.id)
           .in("status", ["open", "in_progress"]);
 
         (issues || []).forEach((issue: any) => {
-          const assignerName = issue.creator?.full_name || "Operations Team";
+          const assignerName = "Operations Team";
           allNotifications.push({
             id: `issue-assigned-${issue.id}`,
             type: issue.priority === "critical" ? "error" : "info",
@@ -264,9 +263,7 @@ export function useNotifications() {
             entity_id: issue.id,
             action_url: "/issues",
             created_at: issue.created_at,
-            metadata: {
-              avatar_url: issue.creator?.avatar_url
-            }
+            metadata: {}
           });
         });
       }
@@ -275,29 +272,26 @@ export function useNotifications() {
         .from("project_tasks" as any) as any)
         .select(`
           *,
-          projects(title),
-          creator:profiles!project_tasks_created_by_fkey(full_name, avatar_url)
+          projects(name)
         `)
         .eq("assigned_to", user.id)
         .in("status", ["todo", "in_progress"])
         .limit(10);
 
       (projectTasks || []).forEach((task: any) => {
-        const assignerName = task.creator?.full_name || "Project Manager";
+        const assignerName = "Project Manager";
         allNotifications.push({
           id: `task-${task.id}`,
           type: "info",
           category: "project",
           title: `${assignerName} assigned a Task`,
-          message: `${task.title} in project ${task.projects?.title || "Unknown"}`,
+          message: `${task.title} in project ${task.projects?.name || "Unknown"}`,
           read: readItems.has(`task-${task.id}`),
           entity_type: "project_task",
           entity_id: task.id,
           action_url: "/projects",
           created_at: task.created_at,
-          metadata: {
-            avatar_url: task.creator?.avatar_url
-          }
+          metadata: {}
         });
       });
 

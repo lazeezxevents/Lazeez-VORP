@@ -98,6 +98,38 @@ ALTER TABLE public.issue_label_relations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_time_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_templates ENABLE ROW LEVEL SECURITY;
 
+-- This migration may be run manually after a partial deployment. Remove the
+-- policies first so a previously-created policy does not abort the entire run.
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "All authenticated can view attachments" ON public.issue_attachments;
+  DROP POLICY IF EXISTS "All authenticated can upload attachments" ON public.issue_attachments;
+  DROP POLICY IF EXISTS "Users can delete own attachments" ON public.issue_attachments;
+  DROP POLICY IF EXISTS "All authenticated can view activity" ON public.issue_activity;
+  DROP POLICY IF EXISTS "System can create activity" ON public.issue_activity;
+  DROP POLICY IF EXISTS "All authenticated can view watchers" ON public.issue_watchers;
+  DROP POLICY IF EXISTS "All authenticated can add watchers" ON public.issue_watchers;
+  DROP POLICY IF EXISTS "Users can remove themselves as watcher" ON public.issue_watchers;
+  DROP POLICY IF EXISTS "All authenticated can view labels" ON public.issue_labels;
+  DROP POLICY IF EXISTS "Staff can manage labels" ON public.issue_labels;
+  DROP POLICY IF EXISTS "Staff can update labels" ON public.issue_labels;
+  DROP POLICY IF EXISTS "Staff can delete labels" ON public.issue_labels;
+  DROP POLICY IF EXISTS "All authenticated can view label relations" ON public.issue_label_relations;
+  DROP POLICY IF EXISTS "All authenticated can add labels to issues" ON public.issue_label_relations;
+  DROP POLICY IF EXISTS "All authenticated can remove labels from issues" ON public.issue_label_relations;
+  DROP POLICY IF EXISTS "All authenticated can view time logs" ON public.issue_time_logs;
+  DROP POLICY IF EXISTS "All authenticated can log time" ON public.issue_time_logs;
+  DROP POLICY IF EXISTS "Users can update own time logs" ON public.issue_time_logs;
+  DROP POLICY IF EXISTS "Users can delete own time logs" ON public.issue_time_logs;
+  DROP POLICY IF EXISTS "All authenticated can view templates" ON public.issue_templates;
+  DROP POLICY IF EXISTS "Staff can manage templates" ON public.issue_templates;
+  DROP POLICY IF EXISTS "Staff can update templates" ON public.issue_templates;
+  DROP POLICY IF EXISTS "Staff can delete templates" ON public.issue_templates;
+  DROP POLICY IF EXISTS "Authenticated users can view issue attachments" ON storage.objects;
+  DROP POLICY IF EXISTS "Authenticated users can upload issue attachments" ON storage.objects;
+  DROP POLICY IF EXISTS "Users can delete own attachments from storage" ON storage.objects;
+END $$;
+
 -- 10. RLS Policies - Attachments
 CREATE POLICY "All authenticated can view attachments"
   ON public.issue_attachments FOR SELECT USING (true);
@@ -191,15 +223,15 @@ CREATE POLICY "Staff can delete templates"
   USING (public.is_staff(auth.uid()));
 
 -- 17. Indexes for performance
-CREATE INDEX idx_issue_attachments_issue_id ON public.issue_attachments(issue_id);
-CREATE INDEX idx_issue_activity_issue_id ON public.issue_activity(issue_id);
-CREATE INDEX idx_issue_activity_created_at ON public.issue_activity(created_at DESC);
-CREATE INDEX idx_issue_watchers_issue_id ON public.issue_watchers(issue_id);
-CREATE INDEX idx_issue_watchers_user_id ON public.issue_watchers(user_id);
-CREATE INDEX idx_issue_label_relations_issue_id ON public.issue_label_relations(issue_id);
-CREATE INDEX idx_issue_label_relations_label_id ON public.issue_label_relations(label_id);
-CREATE INDEX idx_issue_time_logs_issue_id ON public.issue_time_logs(issue_id);
-CREATE INDEX idx_issue_time_logs_user_id ON public.issue_time_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_issue_attachments_issue_id ON public.issue_attachments(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_activity_issue_id ON public.issue_activity(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_activity_created_at ON public.issue_activity(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_issue_id ON public.issue_watchers(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_user_id ON public.issue_watchers(user_id);
+CREATE INDEX IF NOT EXISTS idx_issue_label_relations_issue_id ON public.issue_label_relations(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_label_relations_label_id ON public.issue_label_relations(label_id);
+CREATE INDEX IF NOT EXISTS idx_issue_time_logs_issue_id ON public.issue_time_logs(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_time_logs_user_id ON public.issue_time_logs(user_id);
 
 -- 18. Trigger to log issue activity automatically
 CREATE OR REPLACE FUNCTION public.log_issue_activity()
@@ -270,10 +302,28 @@ INSERT INTO public.issue_templates (name, title_template, description_template, 
   ('Contract Clarification', 'MOU/Contract Question - [Vendor Name]', 'Need clarification on contract terms or MOU details.\n\nClause in question: [Clause]\nQuestion: [Your question]\nContext: [Background]', 'low')
 ON CONFLICT (name) DO NOTHING;
 
--- 23. Enable realtime for new tables
-ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_activity;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_attachments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_watchers;
+-- 23. Enable realtime for new tables (safe to re-run after a partial deployment)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'issue_activity'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_activity;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'issue_attachments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_attachments;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'issue_watchers'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_watchers;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- Migration Complete!
