@@ -1,113 +1,168 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { MOU_TEMPLATE } from "./mouTemplate";
+import lazeezLogo from "@/assets/lazeez-logo.png";
+import {
+    MOU_PRODUCT_TABLE_MARKER,
+    MOU_SECTION_HEADINGS,
+    MOU_TABLE_HEADERS,
+    applyMOUPlaceholders,
+    resolveMOUValues,
+    type MOUTemplateData,
+} from "./mouTemplate";
 
-interface MOUGenerationData {
-    owner_name: string;
-    cnic: string;
-    business_name: string;
-    bank_details: { title: string; iban: string; bank_name: string };
-    menu: Array<{ name: string; quantity: string; price: string }>;
-    address: string;
-    category: string;
-    commission?: number;
-    subscription?: { cost: number; threshold_orders: number };
-    term_months?: number;
+interface MOUGenerationData extends MOUTemplateData {
     templateText?: string;
 }
 
-export const generateEliteMOU = (data: MOUGenerationData) => {
+const loadImageAsBase64 = (src: string): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                reject(new Error("Canvas unavailable"));
+                return;
+            }
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => reject(new Error("Logo load failed"));
+        img.src = src;
+    });
+
+const ensurePageSpace = (doc: jsPDF, currentY: number, needed: number): number => {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (currentY + needed > pageHeight - 20) {
+        doc.addPage();
+        return 20;
+    }
+    return currentY;
+};
+
+const renderParagraph = (
+    doc: jsPDF,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number,
+    bold = false
+): number => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(text, maxWidth);
+    doc.text(lines, x, y);
+    return y + lines.length * lineHeight;
+};
+
+const renderLockedContent = (
+    doc: jsPDF,
+    content: string,
+    startY: number,
+    pageWidth: number
+): number => {
+    const margin = 20;
+    const maxWidth = pageWidth - margin * 2;
+    const lineHeight = 5;
+    let y = startY;
+
+    const blocks = content.split("\n");
+    for (const rawLine of blocks) {
+        const line = rawLine.trimEnd();
+        if (!line) {
+            y += 3;
+            continue;
+        }
+
+        const isHeading = MOU_SECTION_HEADINGS.some(h => line === h);
+        const isNumberedSection = /^\d+\.\s/.test(line);
+        const isSubSection = /^[12]\.\s/.test(line) && line.includes("Responsibilities");
+
+        y = ensurePageSpace(doc, y, lineHeight * 3);
+
+        if (isHeading) {
+            y += 4;
+            doc.setFontSize(isHeading && line === "Memorandum of Understanding" ? 14 : 11);
+            y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true);
+            y += 2;
+            doc.setFontSize(10);
+            continue;
+        }
+
+        if (isNumberedSection || isSubSection) {
+            y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true);
+            continue;
+        }
+
+        y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, false);
+    }
+
+    return y;
+};
+
+export const generateEliteMOU = async (data: MOUGenerationData) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const values = resolveMOUValues(data);
 
-    // Add Lazeez Events branding at the top
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(237, 0, 79); // Brand color (pink/red)
-    doc.text("LAZEEZ EVENTS", pageWidth / 2, 15, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text("Food & Events Platform", pageWidth / 2, 22, { align: "center" });
-    
-    // Add decorative line
-    doc.setDrawColor(237, 0, 79);
-    doc.setLineWidth(0.5);
-    doc.line(20, 26, pageWidth - 20, 26);
-    
-    // Reset for content
+    // Locked logo header — always Lazeez Events branding from assets
+    let currentY = 18;
+    try {
+        const logoBase64 = await loadImageAsBase64(lazeezLogo);
+        const logoWidth = 50;
+        const logoHeight = 18;
+        doc.addImage(logoBase64, "PNG", (pageWidth - logoWidth) / 2, currentY, logoWidth, logoHeight);
+        currentY += logoHeight + 8;
+    } catch {
+        // Fallback: keep heading text if logo fails to load
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(237, 0, 79);
+        doc.text("Lazeez Events", pageWidth / 2, currentY + 5, { align: "center" });
+        currentY += 14;
+    }
+
     doc.setTextColor(0, 0, 0);
-
-    // 1. Prepare Content by replacing placeholders
-    let baseTemplate = data.templateText || MOU_TEMPLATE;
-    let content = baseTemplate
-        .replace(/{{DATE}}/g, date)
-        .replace(/{{VENDOR_NAME}}/g, data.business_name || "Nadir Catering and Pakwaan Centre")
-        .replace(/{{VENDOR_CATEGORY}}/g, data.category.replace('_', ' ') || "food supplier")
-        .replace(/{{VENDOR_ADDRESS}}/g, data.address || "V4HQ+WHQ Shah Faisal Town, Karachi")
-        .replace(/{{COMMISSION_PERCENTAGE}}/g, (data.commission || 14).toString())
-        .replace(/{{BANK_NAME}}/g, data.bank_details?.bank_name || "Bank Al Habib Limited")
-        .replace(/{{BANK_ACCOUNT_NUMBER}}/g, data.bank_details?.iban || "1077-0981-0308-3001-6")
-        .replace(/{{BANK_TITLE}}/g, data.bank_details?.title || "SYED SANOBER HUSSAIN")
-        .replace(/{{OWNER_NAME}}/g, data.owner_name || "Syed Sanober Hussain")
-        .replace(/{{CNIC}}/g, data.cnic || "42101-1234567-8")
-        .replace(/{{SUBSCRIPTION_THRESHOLD}}/g, (data.subscription?.threshold_orders || 5).toString())
-        .replace(/{{SUBSCRIPTION_COST}}/g, (data.subscription?.cost || 5000).toLocaleString())
-        .replace(/{{TERM_MONTHS}}/g, (data.term_months || 3).toString());
-
-    // 2. Split content into sections (manual handling of the table)
-    const sections = content.split("{{PRODUCT_TABLE}}");
-
-    // Set fonts
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
 
-    // Render Section 1
-    let currentY = 35;
-    const lines = doc.splitTextToSize(sections[0], pageWidth - 40);
-    doc.text(lines, 20, currentY);
-    currentY += (lines.length * 5) + 5;
+    // Always use locked template — ignore uploaded/OCR templateText
+    const filledTemplate = applyMOUPlaceholders(data);
+    const [beforeTable, afterTable] = filledTemplate.split(MOU_PRODUCT_TABLE_MARKER);
 
-    // Render Product Table
-    if (data.menu && data.menu.length > 0) {
-        autoTable(doc, {
-            startY: currentY,
-            head: [['Product Name', 'Quantity / Description', 'Agreed Price (PKR)']],
-            body: data.menu.map(item => [
-                item.name,
-                item.quantity,
-                `${item.price}/-`
-            ]),
-            theme: 'grid',
-            headStyles: { fillColor: [237, 0, 79], textColor: [255, 255, 255] },
-            margin: { left: 20, right: 20 },
-            didDrawPage: (data: any) => {
-                currentY = data.cursor.y;
-            }
-        });
-        currentY = (doc as any).lastAutoTable.finalY + 10;
-    } else {
-        doc.text("No specific products defined.", 20, currentY);
-        currentY += 10;
+    currentY = renderLockedContent(doc, beforeTable, currentY, pageWidth);
+    currentY += 4;
+
+    // Product table — 3 columns only (no discounted price)
+    currentY = ensurePageSpace(doc, currentY, 30);
+    autoTable(doc, {
+        startY: currentY,
+        head: [MOU_TABLE_HEADERS.slice()],
+        body: values.menu.map(item => [
+            item.name,
+            item.quantity,
+            item.price.includes("/-") ? item.price : `${item.price}/-`,
+        ]),
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", lineWidth: 0.1, lineColor: [0, 0, 0] },
+        bodyStyles: { lineWidth: 0.1, lineColor: [0, 0, 0] },
+        margin: { left: 20, right: 20 },
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 8;
+
+    if (afterTable) {
+        currentY = renderLockedContent(doc, afterTable.trim(), currentY, pageWidth);
     }
 
-    // Render Section 2 (rest of the MOU)
-    if (sections[1]) {
-        const lines2 = doc.splitTextToSize(sections[1], pageWidth - 40);
-        // Check for page overflow
-        if (currentY + (lines2.length * 5) > 280) {
-            doc.addPage();
-            currentY = 20;
-        }
-        doc.text(lines2, 20, currentY);
-    }
-
-    const blob = doc.output('blob');
+    const blob = doc.output("blob");
+    const businessName = data.business_name || "Vendor";
     return {
         doc,
         blob,
-        filename: `MOU_${data.business_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        filename: `MOU_${businessName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
     };
 };

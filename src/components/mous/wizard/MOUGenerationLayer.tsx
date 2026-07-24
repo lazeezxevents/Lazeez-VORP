@@ -154,10 +154,10 @@ export const MOUGenerationLayer: React.FC<MOUGenerationLayerProps> = ({ category
                     toast.warning("Vendor creation skipped (offline mode)");
                 }
 
-                // 3. Generate PDF and DOCX
+                // 3. Generate PDF and DOCX (always uses locked master template — never AI/OCR raw text)
                 setStatus('generating_docs');
-                const pdfRes = generateEliteMOU({ ...aiData, category, templateText: template?.raw_text });
-                const docxRes = await generateEliteDOCX({ ...aiData, category, templateText: template?.raw_text });
+                const pdfRes = await generateEliteMOU({ ...aiData, category });
+                const docxRes = await generateEliteDOCX({ ...aiData, category });
 
                 // 4. Upload to Storage & Save to MOU Vault
                 setStatus('saving');

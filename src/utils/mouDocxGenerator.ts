@@ -1,132 +1,143 @@
+import {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    Table,
+    TableRow,
+    TableCell,
+    WidthType,
+    AlignmentType,
+    ImageRun,
+    BorderStyle,
+} from "docx";
+import lazeezLogo from "@/assets/lazeez-logo.png";
+import {
+    MOU_PRODUCT_TABLE_MARKER,
+    MOU_SECTION_HEADINGS,
+    MOU_TABLE_HEADERS,
+    applyMOUPlaceholders,
+    resolveMOUValues,
+    type MOUTemplateData,
+} from "./mouTemplate";
 
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun } from "docx";
-import { MOU_TEMPLATE } from "./mouTemplate";
-
-interface DOCXGenerationData {
-    owner_name: string;
-    cnic: string;
-    business_name: string;
-    bank_details: { title: string; iban: string; bank_name: string };
-    menu: Array<{ name: string; quantity: string; price: string }>;
-    address: string;
-    category: string;
-    commission?: number;
-    subscription?: { cost: number; threshold_orders: number };
-    term_months?: number;
+interface DOCXGenerationData extends MOUTemplateData {
     templateText?: string;
 }
 
+const loadImageBuffer = async (src: string): Promise<ArrayBuffer> => {
+    const response = await fetch(src);
+    return response.arrayBuffer();
+};
+
+const cellBorder = {
+    top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+    bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+    left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+    right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+};
+
+const paragraphFromLine = (line: string): Paragraph => {
+    const trimmed = line.trimEnd();
+    if (!trimmed) {
+        return new Paragraph({ text: "", spacing: { after: 120 } });
+    }
+
+    const isHeading = MOU_SECTION_HEADINGS.some(h => trimmed === h);
+    const isBold = isHeading || /^\d+\.\s/.test(trimmed);
+
+    return new Paragraph({
+        children: [
+            new TextRun({
+                text: trimmed,
+                bold: isBold,
+                size: trimmed === "Memorandum of Understanding" ? 28 : 20,
+            }),
+        ],
+        spacing: { after: isHeading ? 160 : 120 },
+        alignment: trimmed === "Memorandum of Understanding" ? AlignmentType.CENTER : AlignmentType.LEFT,
+    });
+};
+
+const contentToParagraphs = (content: string): Paragraph[] =>
+    content.split("\n").map(paragraphFromLine);
+
 export const generateEliteDOCX = async (data: DOCXGenerationData) => {
-    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const baseTemplate = data.templateText || MOU_TEMPLATE;
+    const values = resolveMOUValues(data);
 
-    // Placeholder replacement logic
-    const replacePlaceholders = (text: string) => {
-        return text
-            .replace(/{{DATE}}/g, date)
-            .replace(/{{VENDOR_NAME}}/g, data.business_name || "Nadir Catering and Pakwaan Centre")
-            .replace(/{{VENDOR_CATEGORY}}/g, data.category.replace('_', ' ') || "food supplier")
-            .replace(/{{VENDOR_ADDRESS}}/g, data.address || "V4HQ+WHQ Shah Faisal Town, Karachi")
-            .replace(/{{COMMISSION_PERCENTAGE}}/g, (data.commission || 14).toString())
-            .replace(/{{BANK_NAME}}/g, data.bank_details?.bank_name || "Bank Al Habib Limited")
-            .replace(/{{BANK_ACCOUNT_NUMBER}}/g, data.bank_details?.iban || "1077-0981-0308-3001-6")
-            .replace(/{{BANK_TITLE}}/g, data.bank_details?.title || "SYED SANOBER HUSSAIN")
-            .replace(/{{OWNER_NAME}}/g, data.owner_name || "Syed Sanober Hussain")
-            .replace(/{{CNIC}}/g, data.cnic || "42101-1234567-8")
-            .replace(/{{SUBSCRIPTION_THRESHOLD}}/g, (data.subscription?.threshold_orders || 5).toString())
-            .replace(/{{SUBSCRIPTION_COST}}/g, (data.subscription?.cost || 5000).toLocaleString())
-            .replace(/{{TERM_MONTHS}}/g, (data.term_months || 3).toString());
-    };
+    // Always use locked template — ignore uploaded/OCR templateText
+    const filledTemplate = applyMOUPlaceholders(data);
+    const [beforeTable, afterTable] = filledTemplate.split(MOU_PRODUCT_TABLE_MARKER);
 
-    const sections = baseTemplate.split("{{PRODUCT_TABLE}}");
+    let logoParagraph: Paragraph;
+    try {
+        const logoBuffer = await loadImageBuffer(lazeezLogo);
+        logoParagraph = new Paragraph({
+            children: [
+                new ImageRun({
+                    data: logoBuffer,
+                    transformation: { width: 180, height: 65 },
+                    type: "png",
+                }),
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 240 },
+        });
+    } catch {
+        logoParagraph = new Paragraph({
+            children: [new TextRun({ text: "Lazeez Events", bold: true, size: 32, color: "ED004F" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 240 },
+        });
+    }
 
-    // Create document
+    const table = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+            new TableRow({
+                children: MOU_TABLE_HEADERS.map(text =>
+                    new TableCell({
+                        borders: cellBorder,
+                        children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18 })] })],
+                    })
+                ),
+            }),
+            ...values.menu.map(item =>
+                new TableRow({
+                    children: [
+                        item.name,
+                        item.quantity,
+                        item.price.includes("/-") ? item.price : `${item.price}/-`,
+                    ].map(text =>
+                        new TableCell({
+                            borders: cellBorder,
+                            children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
+                        })
+                    ),
+                })
+            ),
+        ],
+    });
+
     const doc = new Document({
         sections: [
             {
                 properties: {},
                 children: [
-                    // Lazeez Events Branding Header
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: "LAZEEZ EVENTS",
-                                bold: true,
-                                size: 48,
-                                color: "ED004F",
-                            }),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 100 },
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: "Food & Events Platform",
-                                size: 20,
-                                color: "666666",
-                            }),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 200 },
-                    }),
-                    // MOU Title
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: "MEMORANDUM OF UNDERSTANDING",
-                                bold: true,
-                                size: 28,
-                            }),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 400 },
-                    }),
-                    ...replacePlaceholders(sections[0]).split('\n').map(line =>
-                        new Paragraph({
-                            children: [new TextRun(line.trim())],
-                            spacing: { after: 200 },
-                        })
-                    ),
-
-                    // Table
-                    new Table({
-                        width: { size: 100, type: WidthType.PERCENTAGE },
-                        rows: [
-                            new TableRow({
-                                children: [
-                                    "Product Name", "Quantity / Description", "Agreed Price (PKR)"
-                                ].map(text => new TableCell({
-                                    children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "ffffff" })] })],
-                                    shading: { fill: "ed004f" }
-                                }))
-                            }),
-                            ...(data.menu || []).map(item => new TableRow({
-                                children: [
-                                    item.name, item.quantity, `${item.price}/-`
-                                ].map(text => new TableCell({
-                                    children: [new Paragraph(text)]
-                                }))
-                            }))
-                        ]
-                    }),
-
-                    new Paragraph({ text: "", spacing: { before: 400 } }),
-
-                    ...replacePlaceholders(sections[1]).split('\n').map(line =>
-                        new Paragraph({
-                            children: [new TextRun(line.trim())],
-                            spacing: { after: 200 },
-                        })
-                    ),
+                    logoParagraph,
+                    ...contentToParagraphs(beforeTable),
+                    table,
+                    new Paragraph({ text: "", spacing: { before: 200, after: 200 } }),
+                    ...contentToParagraphs(afterTable.trim()),
                 ],
             },
         ],
     });
 
     const blob = await Packer.toBlob(doc);
+    const businessName = data.business_name || "Vendor";
     return {
         blob,
-        filename: `MOU_${data.business_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`
+        filename: `MOU_${businessName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.docx`,
     };
 };

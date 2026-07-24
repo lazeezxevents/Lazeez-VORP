@@ -20,14 +20,17 @@ export interface Message {
 }
 
 const buildSystemPrompt = (category: string, template?: any): string => {
-    let templateContext = "";
-    if (template?.structure_json) {
-        templateContext = `
-        I have "LEARNED" this specific template structure from a sample upload:
-        - Placeholders identified: ${JSON.stringify(template.structure_json)}
-        - Text Context: ${(template.raw_text || "").substring(0, 500)}...
-        PLEASE MAP THE USER DETAILS TO THESE IDENTIFIED PLACEHOLDERS.`;
-    }
+    const templateContext = template?.locked
+        ? `
+        LOCKED TEMPLATE MODE: The MOU uses a fixed Lazeez master document (1784799317546).
+        You must ONLY collect vendor-specific placeholder data. Do NOT rewrite headings, logos, legal clauses, or table structure.
+        The product table has exactly 3 columns: Product Name, Quantity / Description (min), Original Price (PKR).
+        Never include a discounted price column.`
+        : template?.structure_json
+            ? `
+        Placeholders identified: ${JSON.stringify(template.structure_json)}
+        Map user details to these placeholders only.`
+            : "";
 
     return `You are a Conversational Legal Assistant for Lazeez Events.
     Your goal is to talk to the user naturally and collect/extract data for an MOU.
