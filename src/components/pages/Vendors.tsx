@@ -94,6 +94,8 @@ export default function Vendors() {
   }) || [];
 
   const activeCount = vendors?.filter(v => v.status === "active").length || 0;
+  const inactiveCount = vendors?.filter(v => v.status === "inactive").length || 0;
+  const leftCount = vendors?.filter(v => v.status === "left").length || 0;
   const avgRating = vendors?.length
     ? (vendors.reduce((acc, v) => acc + (v.rating || 0), 0) / vendors.filter(v => v.rating).length || 0).toFixed(1)
     : "0.0";
@@ -155,7 +157,7 @@ export default function Vendors() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <Card className="animate-stagger-fade-in" style={{ animationDelay: '0ms' }}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Vendors</p>
@@ -170,13 +172,25 @@ export default function Vendors() {
           </Card>
           <Card className="animate-stagger-fade-in" style={{ animationDelay: '160ms' }}>
             <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">Inactive</p>
+              <p className="text-2xl font-bold text-muted-foreground">{inactiveCount}</p>
+            </CardContent>
+          </Card>
+          <Card className="animate-stagger-fade-in" style={{ animationDelay: '240ms' }}>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">Left</p>
+              <p className="text-2xl font-bold text-muted-foreground">{leftCount}</p>
+            </CardContent>
+          </Card>
+          <Card className="animate-stagger-fade-in" style={{ animationDelay: '320ms' }}>
+            <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Pending</p>
               <p className="text-2xl font-bold text-warning">
                 {vendors?.filter(v => v.status === "pending").length || 0}
               </p>
             </CardContent>
           </Card>
-          <Card className="animate-stagger-fade-in" style={{ animationDelay: '240ms' }}>
+          <Card className="animate-stagger-fade-in" style={{ animationDelay: '400ms' }}>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Avg Rating</p>
               <p className="text-2xl font-bold">{avgRating}</p>
