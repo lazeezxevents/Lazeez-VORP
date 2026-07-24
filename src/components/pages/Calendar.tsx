@@ -522,6 +522,7 @@ export default function Calendar() {
               <div className="grid grid-cols-7 gap-px sm:gap-1">
                 {days.map((day, i) => {
                   const dayEvents = getEventsForDay(day);
+                  const dayNotes = personalNotes.filter(note => note.note_date === format(day, "yyyy-MM-dd"));
                   const isCurrentMonth = isSameMonth(day, currentDate);
                   const isSelected = selectedDate && isSameDay(day, selectedDate);
 
@@ -557,7 +558,9 @@ export default function Calendar() {
                         {dayEvents.slice(0, 4).map((event) => (
                           <span key={event.id} className={cn("h-1.5 w-1.5 rounded-full border", getEventColor(event))} />
                         ))}
-                        {notesByDate.has(format(day, "yyyy-MM-dd")) && <StickyNote className="h-3 w-3 text-primary" />}
+                        {dayNotes.slice(0, 2).map((note) => (
+                          <StickyNote key={note.id} className="h-3 w-3 text-primary" />
+                        ))}
                       </div>
                       <div className="hidden space-y-0.5 overflow-hidden sm:block">
                         {dayEvents.slice(0, 3).map((event) => {
@@ -582,16 +585,20 @@ export default function Calendar() {
                         {dayEvents.length > 3 && (
                           <div className="text-[10px] text-muted-foreground text-center">+{dayEvents.length - 3} more</div>
                         )}
-                        {notesByDate.has(format(day, "yyyy-MM-dd")) && (
-                          <button
-                            type="button"
-                            onClick={(event) => { event.stopPropagation(); setSelectedDate(day); }}
-                            className="mt-1 flex w-full items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1 py-0.5 text-left text-[10px] text-primary hover:bg-primary/10"
-                            title={notesByDate.get(format(day, "yyyy-MM-dd"))?.content}
+                        {dayNotes.slice(0, 2).map((note) => (
+                          <div
+                            key={note.id}
+                            draggable
+                            onDragStart={(e) => handleDragStartNote(note, e)}
+                            className="mt-1 flex w-full items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1 py-0.5 text-left text-[10px] text-primary hover:bg-primary/10 cursor-move"
+                            title={note.content}
                           >
                             <StickyNote className="h-2.5 w-2.5 shrink-0" />
-                            <span className="truncate">{notesByDate.get(format(day, "yyyy-MM-dd"))?.content}</span>
-                          </button>
+                            <span className="truncate">{note.content}</span>
+                          </div>
+                        ))}
+                        {dayNotes.length > 2 && (
+                          <div className="text-[10px] text-muted-foreground text-center">+{dayNotes.length - 2} more notes</div>
                         )}
                       </div>
                     </div>
@@ -727,23 +734,6 @@ export default function Calendar() {
             </CardContent>
           </Card>
 
-          {/* Elite Tip for Notes */}
-          <Card className="bg-primary/5 border-primary/20 shadow-glow overflow-hidden relative group">
-            <div className="absolute -right-4 -top-4 w-12 h-12 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
-            <CardContent className="p-4 relative z-10">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Elite Tip</p>
-                  <p className="text-[11px] text-zinc-600 leading-relaxed font-poppins">
-                    <strong>Drag and drop</strong> any event to a new date to instantly trigger the reschedule workflow. Legal dates update seamlessly across the system.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
