@@ -14,7 +14,7 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  Brain
+  Brain,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
 import { useIssues, useUpdateIssue, useDeleteIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { IssueForm } from "@/components/issues/IssueForm";
 import { IssueAIAssistant } from "@/components/issues/IssueAIAssistant";
+import { IssueDetailSheet } from "@/components/issues/IssueDetailSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
@@ -80,6 +81,7 @@ export default function Issues() {
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const [deleteIssue, setDeleteIssue] = useState<Issue | null>(null);
   const [aiIssue, setAiIssue] = useState<Issue | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const { data: issues, isLoading } = useIssues();
   const updateIssue = useUpdateIssue();
   const deleteIssueMutation = useDeleteIssue();
@@ -213,8 +215,9 @@ export default function Issues() {
                   {getIssuesByStatus(status).map((issue, issueIdx) => (
                     <Card
                       key={issue.id}
-                      className="cursor-pointer animate-stagger-fade-in"
+                      className="cursor-pointer animate-stagger-fade-in hover:shadow-md transition-shadow"
                       style={{ animationDelay: `${(colIdx * 100) + (issueIdx * 50)}ms` }}
+                      onClick={() => setSelectedIssue(issue)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
@@ -223,7 +226,7 @@ export default function Issues() {
                           </Badge>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -313,6 +316,7 @@ export default function Issues() {
                           key={issue.id}
                           className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer animate-stagger-fade-in"
                           style={{ animationDelay: `${index * 40}ms` }}
+                          onClick={() => setSelectedIssue(issue)}
                         >
                           <td className="p-4">
                             <p className="text-sm font-medium text-foreground">{issue.title}</p>
@@ -341,7 +345,7 @@ export default function Issues() {
                           <td className="p-4">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -388,6 +392,16 @@ export default function Issues() {
         open={!!aiIssue}
         onOpenChange={(open) => !open && setAiIssue(null)}
         issue={aiIssue}
+      />
+
+      <IssueDetailSheet
+        issue={selectedIssue}
+        open={!!selectedIssue}
+        onOpenChange={(open) => !open && setSelectedIssue(null)}
+        onEdit={(issue) => {
+          setEditingIssue(issue);
+          setFormOpen(true);
+        }}
       />
 
       <AlertDialog open={!!deleteIssue} onOpenChange={() => setDeleteIssue(null)}>
