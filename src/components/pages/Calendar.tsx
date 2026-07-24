@@ -98,6 +98,10 @@ export default function Calendar() {
     event: CalendarEvent;
     newDate: Date;
   } | null>(null);
+  const [rescheduleNoteDialog, setRescheduleNoteDialog] = useState<{
+    note: PersonalCalendarNote;
+    newDate: Date;
+  } | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
@@ -320,16 +324,31 @@ export default function Calendar() {
       const oldDate = draggedNote.note_date;
       
       if (newDate !== oldDate) {
-        (supabase as any).from("calendar_personal_notes")
-          .update({ note_date: newDate })
-          .eq("id", draggedNote.id)
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
-            toast.success("Note moved to new date");
-          });
+        setRescheduleNoteDialog({
+          note: draggedNote,
+          newDate: day
+        });
       }
     }
     setDraggedNote(null);
+  };
+
+  const handleRescheduleNote = async () => {
+    if (!rescheduleNoteDialog || !user?.id) return;
+    const { note, newDate } = rescheduleNoteDialog;
+    const newDateStr = format(newDate, "yyyy-MM-dd");
+    
+    try {
+      await (supabase as any).from("calendar_personal_notes")
+        .update({ note_date: newDateStr })
+        .eq("id", note.id);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+      toast.success("Note rescheduled successfully");
+    } catch {
+      toast.error("Failed to reschedule note");
+    } finally {
+      setRescheduleNoteDialog(null);
+    }
   };
 
   const toggleNoteExpansion = (noteId: string) => {
@@ -905,6 +924,35 @@ export default function Calendar() {
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setRescheduleDialog(null)}>Cancel</Button>
                 <Button onClick={handleReschedule}>Confirm Reschedule</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Note Dialog */}
+      <Dialog open={!!rescheduleNoteDialog} onOpenChange={() => setRescheduleNoteDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule Note</DialogTitle>
+          </DialogHeader>
+          {rescheduleNoteDialog && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Note</Label>
+                <p className="font-medium">{rescheduleNoteDialog.note.content}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Current Date</Label>
+                <p>{format(parseISO(rescheduleNoteDialog.note.note_date), "MMMM d, yyyy")}</p>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">New Date</Label>
+                <p className="font-medium text-primary">{format(rescheduleNoteDialog.newDate, "MMMM d, yyyy")}</p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setRescheduleNoteDialog(null)}>Cancel</Button>
+                <Button onClick={handleRescheduleNote}>Confirm Reschedule</Button>
               </div>
             </div>
           )}
