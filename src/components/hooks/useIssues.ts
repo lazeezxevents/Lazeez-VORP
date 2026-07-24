@@ -42,9 +42,7 @@ export interface CreateIssueInput {
 
 const baseIssueSelect = `
   *,
-  vendor:vendors(name),
-  assignee:profiles!issues_assigned_to_fkey(full_name, email),
-  reporter:profiles!issues_reported_by_fkey(full_name, email)
+  vendor:vendors(name)
 `;
 
 const linkedIssueSelect = `
@@ -52,6 +50,27 @@ const linkedIssueSelect = `
   project:projects(name),
   project_task:project_tasks(title, project_id)
 `;
+
+async function attachIssuePeople<T extends Issue | Issue[] | null>(issues: T): Promise<T> {
+  const records = (Array.isArray(issues) ? issues : issues ? [issues] : []) as Issue[];
+  const personIds = [...new Set(records.flatMap((issue) => [issue.assigned_to, issue.reported_by]).filter(Boolean))] as string[];
+  if (personIds.length === 0) return issues;
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", personIds);
+
+  if (!profiles) return issues;
+  const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+  const addPeople = (issue: Issue): Issue => ({
+    ...issue,
+    assignee: issue.assigned_to ? byId.get(issue.assigned_to) || null : null,
+    reporter: byId.get(issue.reported_by) || null,
+  });
+
+  return (Array.isArray(issues) ? records.map(addPeople) : issues ? addPeople(issues as Issue) : null) as T;
+}
 
 export function useIssues() {
   const queryClient = useQueryClient();
@@ -64,7 +83,7 @@ export function useIssues() {
         .select(linkedIssueSelect)
         .order("created_at", { ascending: false });
 
-      if (!error) return data as Issue[];
+      if (!error) return attachIssuePeople(data as Issue[]);
 
       // Keep the Issue workspace usable if the optional project-link migration
       // has not yet been applied to a live database.
@@ -74,7 +93,7 @@ export function useIssues() {
         .order("created_at", { ascending: false });
 
       if (fallbackError) throw fallbackError;
-      return fallbackData as Issue[];
+      return attachIssuePeople(fallbackData as Issue[]);
     },
   });
 
@@ -129,7 +148,7 @@ export function useIssue(id: string) {
         .eq("id", id)
         .maybeSingle();
 
-      if (!error) return data as Issue | null;
+      if (!error) return attachIssuePeople(data as Issue | null);
 
       const { data: fallbackData, error: fallbackError } = await (supabase
         .from("issues") as any)
@@ -138,7 +157,7 @@ export function useIssue(id: string) {
         .maybeSingle();
 
       if (fallbackError) throw fallbackError;
-      return fallbackData as Issue | null;
+      return attachIssuePeople(fallbackData as Issue | null);
     },
     enabled: !!id,
   });

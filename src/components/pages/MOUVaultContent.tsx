@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMOUVault, MOUVaultItem } from "@/hooks/useMOUVault";
+import { useUpdateVaultItem } from "@/hooks/useMOUVault";
 import { useVendors } from "@/hooks/useVendors";
 import { MOUVaultUpload } from "@/components/mous/MOUVaultUpload";
 import { MOUVaultCard } from "@/components/mous/MOUVaultCard";
@@ -36,6 +37,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 type SortOption = "recent" | "expiration" | "vendor";
 
@@ -47,9 +56,39 @@ export default function MOUVaultContent() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MOUVaultItem | null>(null);
   const [viewerItem, setViewerItem] = useState<MOUVaultItem | null>(null);
+  const [branchingItem, setBranchingItem] = useState<MOUVaultItem | null>(null);
+  const [branchParentId, setBranchParentId] = useState("");
 
   const { data: vaultItems, isLoading } = useMOUVault();
   const { data: vendors } = useVendors();
+  const updateVaultItem = useUpdateVaultItem();
+
+  const branchCandidates = useMemo(() => (vaultItems || []).filter((item) =>
+    item.id !== branchingItem?.id && item.vendor_id === branchingItem?.vendor_id
+  ), [vaultItems, branchingItem]);
+
+  const openBranchDialog = (item: MOUVaultItem) => {
+    setBranchingItem(item);
+    setBranchParentId("");
+  };
+
+  const makeDaughterVersion = async () => {
+    if (!branchingItem || !branchParentId || !vaultItems) return;
+    const selectedParent = vaultItems.find((item) => item.id === branchParentId);
+    if (!selectedParent) return;
+
+    const rootId = selectedParent.parent_vault_id || selectedParent.id;
+    const family = vaultItems.filter((item) => item.id === rootId || item.parent_vault_id === rootId);
+    const nextVersion = Math.max(1, ...family.map((item) => item.version_number || 1)) + 1;
+
+    await updateVaultItem.mutateAsync({
+      id: branchingItem.id,
+      parent_vault_id: rootId,
+      version_number: nextVersion,
+    });
+    setBranchingItem(null);
+    setBranchParentId("");
+  };
 
   const filteredItems = useMemo(() => {
     if (!vaultItems) return [];
@@ -263,6 +302,7 @@ export default function MOUVaultContent() {
                           daughters={daughters}
                           onViewDetails={setSelectedItem}
                           onViewDocument={setViewerItem}
+                          onMakeDaughter={openBranchDialog}
                         />
                       );
                     })}
@@ -297,6 +337,38 @@ export default function MOUVaultContent() {
       </Tabs>
 
       <MOUVaultUpload open={uploadOpen} onOpenChange={setUploadOpen} />
+
+      <Dialog open={!!branchingItem} onOpenChange={(open) => !open && setBranchingItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Make daughter version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Make <span className="font-medium text-foreground">{branchingItem?.document_name}</span> the next version of an existing MOU for this vendor.
+            </p>
+            <div className="space-y-2">
+              <Label>Parent MOU (V1.0)</Label>
+              <Select value={branchParentId} onValueChange={setBranchParentId}>
+                <SelectTrigger><SelectValue placeholder="Choose the original MOU" /></SelectTrigger>
+                <SelectContent>
+                  {branchCandidates.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.document_name} (v{item.version_number || 1}.0)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBranchingItem(null)}>Cancel</Button>
+            <Button onClick={() => void makeDaughterVersion()} disabled={!branchParentId || updateVaultItem.isPending}>
+              Make Daughter Version
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Document Viewer */}
       <MOUDocumentViewer

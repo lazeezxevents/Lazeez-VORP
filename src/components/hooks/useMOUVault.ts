@@ -37,6 +37,8 @@ export interface MOUVaultItem {
   // New fields
   has_auto_renewal?: boolean;
   renewal_period_days?: number;
+  parent_vault_id?: string | null;
+  version_number?: number;
   party_1_name?: string | null;
   party_1_business?: string | null;
   party_2_name?: string | null;

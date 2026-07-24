@@ -51,9 +51,10 @@ interface MOUVaultCardProps {
   vendorStatus?: string;
   onViewDetails?: (item: MOUVaultItem) => void;
   onViewDocument?: (item: MOUVaultItem) => void;
+  onMakeDaughter?: (item: MOUVaultItem) => void;
 }
 
-export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorStatus, onViewDetails, onViewDocument }: MOUVaultCardProps) {
+export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorStatus, onViewDetails, onViewDocument, onMakeDaughter }: MOUVaultCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const deleteItem = useDeleteVaultItem();
@@ -221,6 +222,12 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
                   <Download className="w-4 h-4 mr-2" />
                   Download
                 </DropdownMenuItem>
+                {onMakeDaughter && (
+                  <DropdownMenuItem onClick={() => onMakeDaughter(item)}>
+                    <GitBranch className="w-4 h-4 mr-2" />
+                    Make Daughter Version
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 {item.effective_end_date && !isPast(new Date(item.effective_end_date)) && (
                   <DropdownMenuItem onClick={() => setTerminateOpen(true)} className="text-warning">
