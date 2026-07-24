@@ -1408,7 +1408,7 @@ export type Database = {
             foreignKeyName: "profiles_designation_id_fkey"
             columns: ["designation_id"]
             isOneToOne: false
-            referencedRelation: "designations"
+            referencedRelation: "custom_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1431,6 +1431,51 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      app_permissions: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          module: string
+          description: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          module: string
+          description: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          module?: string
+          description?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          role_id: string
+          permission_id: string
+          created_at: string
+        }
+        Insert: {
+          role_id: string
+          permission_id: string
+          created_at?: string
+        }
+        Update: {
+          role_id?: string
+          permission_id?: string
+          created_at?: string
         }
         Relationships: []
       }
