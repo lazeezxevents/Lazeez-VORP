@@ -89,7 +89,7 @@ export function useUpsertUserCommunicationDeliveryPrefs() {
   return useMutation({
     mutationFn: async (next: Omit<UserCommunicationDeliveryPrefs, "user_id">) => {
       if (!user) throw new Error("Not signed in");
-      const { error } = await supabase.from("user_notification_preferences").upsert(
+      const { data, error } = await supabase.from("user_notification_preferences").upsert(
         {
           user_id: user.id,
           push_notifications: next.push_notifications,
@@ -102,8 +102,9 @@ export function useUpsertUserCommunicationDeliveryPrefs() {
           sound_volume_percent: next.sound_volume_percent,
         },
         { onConflict: "user_id" }
-      );
+      ).select("user_id").single();
       if (error) throw error;
+      if (!data) throw new Error("Communication preferences were not saved");
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["user-communication-delivery-prefs"] });

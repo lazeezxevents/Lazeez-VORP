@@ -177,25 +177,18 @@ export function useUnifiedNotificationPreferences() {
     mutationFn: async (updates: Partial<ContentPreferences>) => {
       if (!user?.id) throw new Error("Not authenticated");
 
-      // Check if record exists
-      const { data: existing } = await supabase
+      // A write that affects zero rows has no Supabase error. Upsert plus a
+      // returned row makes a missing preference record or an RLS problem visible
+      // instead of showing a false "saved" state in the UI.
+      const { data, error } = await supabase
         .from("notification_preferences")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .upsert({ user_id: user.id, ...updates }, { onConflict: "user_id" })
+        .select("user_id")
+        .single();
 
-      if (existing) {
-        const { error } = await supabase
-          .from("notification_preferences")
-          .update(updates)
-          .eq("user_id", user.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("notification_preferences")
-          .insert({ user_id: user.id, ...updates });
-        if (error) throw error;
-      }
+      if (error) throw error;
+      if (!data) throw new Error("Preferences were not saved");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-preferences-content"] });
@@ -211,25 +204,15 @@ export function useUnifiedNotificationPreferences() {
     mutationFn: async (updates: Partial<CommunicationPreferences>) => {
       if (!user?.id) throw new Error("Not authenticated");
 
-      // Check if record exists
-      const { data: existing } = await (supabase
+      const { data, error } = await (supabase
         .from("user_notification_preferences" as any) as any)
+        .upsert({ user_id: user.id, ...updates }, { onConflict: "user_id" })
         .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .single();
 
-      if (existing) {
-        const { error } = await (supabase
-          .from("user_notification_preferences" as any) as any)
-          .update(updates)
-          .eq("user_id", user.id);
-        if (error) throw error;
-      } else {
-        const { error } = await (supabase
-          .from("user_notification_preferences" as any) as any)
-          .insert({ user_id: user.id, ...updates });
-        if (error) throw error;
-      }
+      if (error) throw error;
+      if (!data) throw new Error("Communication preferences were not saved");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-preferences-communication"] });

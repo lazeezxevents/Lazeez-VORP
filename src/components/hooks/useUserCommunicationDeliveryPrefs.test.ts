@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useUserCommunicationDeliveryPrefs, useUpsertUserCommunicationDeliveryPrefs } from './useUserCommunicationDeliveryPrefs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client', () => ({
@@ -30,18 +30,16 @@ describe('useUserCommunicationDeliveryPrefs', () => {
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
 
-  it('should return null when user is not authenticated', async () => {
+  it('should not fetch preferences when user is not authenticated', async () => {
     vi.mocked(useAuth).mockReturnValue({ user: null } as any);
 
     const { result } = renderHook(() => useUserCommunicationDeliveryPrefs(), { wrapper });
 
-    await waitFor(() => {
-      expect(result.current.data).toBeNull();
-    });
+    expect(result.current.data).toBeUndefined();
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it('should return default preferences when no data exists', async () => {
@@ -184,15 +182,16 @@ describe('useUpsertUserCommunicationDeliveryPrefs', () => {
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
 
   it('should upsert user preferences', async () => {
     const mockUser = { id: 'user-123' };
     vi.mocked(useAuth).mockReturnValue({ user: mockUser } as any);
 
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+    const mockSingle = vi.fn().mockResolvedValue({ data: { user_id: 'user-123' }, error: null });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockUpsert = vi.fn().mockReturnValue({ select: mockSelect });
     const mockFrom = vi.fn().mockReturnValue({
       upsert: mockUpsert,
     });
@@ -220,6 +219,7 @@ describe('useUpsertUserCommunicationDeliveryPrefs', () => {
       },
       { onConflict: 'user_id' }
     );
+    expect(mockSelect).toHaveBeenCalledWith('user_id');
   });
 
   it('should throw error when user is not authenticated', async () => {

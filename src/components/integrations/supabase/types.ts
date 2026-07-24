@@ -1303,6 +1303,7 @@ export type Database = {
           quiet_hours_enabled: boolean
           quiet_hours_end: string
           quiet_hours_start: string
+          sound_volume_percent: number
           updated_at: string
           user_id: string
         }
@@ -1315,6 +1316,7 @@ export type Database = {
           quiet_hours_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
+          sound_volume_percent?: number
           updated_at?: string
           user_id: string
         }
@@ -1327,6 +1329,7 @@ export type Database = {
           quiet_hours_enabled?: boolean
           quiet_hours_end?: string
           quiet_hours_start?: string
+          sound_volume_percent?: number
           updated_at?: string
           user_id?: string
         }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bell, Mail, Volume2, VolumeX, Smartphone, Clock, FileText, Ticket, TrendingUp, Truck, DollarSign, Loader2, Save } from "lucide-react";
 import { useUnifiedNotificationPreferences } from "@/hooks/useUnifiedNotificationPreferences";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 export function UnifiedNotificationSettings() {
   const { preferences, isLoading, updateContent, updateCommunication, updateUI, isUpdating } = useUnifiedNotificationPreferences();
@@ -33,17 +34,26 @@ export function UnifiedNotificationSettings() {
         updateCommunication(localComm),
         updateUI(localUI),
       ]);
+      toast.success("All notification preferences saved");
     } catch (error) {
-      // Errors handled by mutations
+      // The individual mutations show the server error; avoid claiming a save
+      // succeeded when any one preference group failed.
     }
   };
 
-  const playTestSound = () => {
+  const playTestSound = async () => {
+    const soundUrl = localUI.notification_sound_type === "bell_ring"
+      ? "/sounds/diagnostic.mp3"
+      : "/sounds/pop.mp3";
+    const audio = new Audio(soundUrl);
+    audio.volume = localUI.sound_volume;
+
     try {
-      const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT");
-      audio.volume = localComm.sound_volume_percent / 100;
-      audio.play().catch(() => {});
-    } catch(e) { /* ignore */ }
+      await audio.play();
+      toast.success("Test sound played");
+    } catch {
+      toast.error("Could not play the test sound. Check your browser audio permissions.");
+    }
   };
 
   if (isLoading) {
@@ -172,7 +182,7 @@ export function UnifiedNotificationSettings() {
                       <SelectItem value="success">Success chime</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" size="sm" onClick={playTestSound}>Test</Button>
+                  <Button variant="outline" size="sm" type="button" onClick={() => void playTestSound()}>Test</Button>
                 </div>
               </div>
             </motion.div>
