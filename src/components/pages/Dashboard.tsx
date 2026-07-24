@@ -26,6 +26,8 @@ import { VendorCategoryPieChart } from "@/components/dashboard/charts/VendorCate
 import { IssuesByPriorityChart } from "@/components/dashboard/charts/IssuesByPriorityChart";
 import { IssueStatusDonutChart } from "@/components/dashboard/charts/IssueStatusDonutChart";
 import { VendorOnboardingTrendChart } from "@/components/dashboard/charts/VendorOnboardingTrendChart";
+import { IssueFlowTrendChart } from "@/components/dashboard/charts/IssueFlowTrendChart";
+import { MOUExpiryHorizonChart } from "@/components/dashboard/charts/MOUExpiryHorizonChart";
 import { Progress } from "@/components/ui/progress";
 import { useMOUVault } from "@/hooks/useMOUVault";
 
@@ -134,7 +136,7 @@ export default function Dashboard() {
       title="Dashboard"
       subtitle={`Welcome back, ${profile?.full_name || (user?.email === "highypestudio@gmail.com" ? "Administrator" : (user?.email?.split("@")[0] || "User"))}`}
     >
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
@@ -143,7 +145,7 @@ export default function Dashboard() {
               className="relative overflow-hidden animate-stagger-fade-in"
               style={{ animationDelay: `${index * 80}ms` }}
             >
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 {isLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-24" />
@@ -232,13 +234,13 @@ export default function Dashboard() {
           {/* Recent Issues */}
           <div className="lg:col-span-2 h-full">
             <Card className="min-h-[32rem] h-full flex flex-col">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 sm:p-6">
                 <CardTitle className="text-lg font-semibold">Recent Issues</CardTitle>
                 <Badge variant="secondary" className="font-normal">
                   {issues?.length || 0} total
                 </Badge>
               </CardHeader>
-              <CardContent className="flex-1">
+              <CardContent className="flex-1 p-4 sm:p-6">
                 {isLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
@@ -250,12 +252,12 @@ export default function Dashboard() {
                     {recentIssues.map((issue) => (
                       <div
                         key={issue.id}
-                        className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                         onClick={() => navigate("/issues")}
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className="flex flex-col">
-                            <span className="font-medium text-foreground">
+                            <span className="font-medium text-foreground break-words">
                               {issue.title}
                             </span>
                             <span className="text-sm text-muted-foreground">
@@ -263,14 +265,14 @@ export default function Dashboard() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                           <Badge variant="outline" className={priorityColors[issue.priority]}>
                             {issue.priority}
                           </Badge>
                           <Badge className={statusColors[issue.status]}>
                             {issue.status.replace("_", " ")}
                           </Badge>
-                          <span className="text-xs text-muted-foreground w-20 text-right">
+                          <span className="text-xs text-muted-foreground sm:w-20 sm:text-right">
                             {formatDistanceToNow(new Date(issue.created_at), {
                               addSuffix: true,
                             })}
@@ -399,8 +401,9 @@ export default function Dashboard() {
 
         {/* Analytics Section */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+            <p className="hidden sm:block text-sm text-muted-foreground">Live operational signals from issues and the MOU Vault</p>
           </div>
 
           {/* Large Charts Row */}
@@ -457,6 +460,29 @@ export default function Dashboard() {
                 ) : (
                   <IssueStatusDonutChart issues={issues || []} isLoading={issuesLoading} />
                 )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Operational Trends */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="animate-fade-in" style={{ animationDelay: '320ms' }}>
+              <CardHeader>
+                <CardTitle>Issue Flow & Backlog</CardTitle>
+                <p className="text-sm text-muted-foreground">Opened and resolved issues over the last 14 days, with the remaining open workload.</p>
+              </CardHeader>
+              <CardContent>
+                <IssueFlowTrendChart issues={issues || []} isLoading={issuesLoading} />
+              </CardContent>
+            </Card>
+
+            <Card className="animate-fade-in" style={{ animationDelay: '400ms' }}>
+              <CardHeader>
+                <CardTitle>MOU Expiry Outlook</CardTitle>
+                <p className="text-sm text-muted-foreground">Contract exposure by expiry window, split by auto-renewal coverage.</p>
+              </CardHeader>
+              <CardContent>
+                <MOUExpiryHorizonChart items={vaultItems} />
               </CardContent>
             </Card>
           </div>

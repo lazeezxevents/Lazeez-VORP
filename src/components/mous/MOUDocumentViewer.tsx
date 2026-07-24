@@ -29,6 +29,7 @@ import { MOUVaultItem, useTriggerExtraction, useUpdateVaultItem } from "@/hooks/
 import { MOURenewalTimeline } from "./MOURenewalTimeline";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MOUDocumentViewerProps {
   item: MOUVaultItem | null;
@@ -42,6 +43,7 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
   const [loading, setLoading] = useState(false);
   const triggerExtraction = useTriggerExtraction();
   const updateItem = useUpdateVaultItem();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (item && open) {
@@ -148,9 +150,9 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
 
           {/* Main Content */}
           <div className="flex-1 overflow-hidden">
-            <ResizablePanelGroup direction="horizontal">
+            <ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"}>
               {/* PDF Viewer Panel */}
-              <ResizablePanel defaultSize={65} minSize={40}>
+              <ResizablePanel defaultSize={isMobile ? 58 : 65} minSize={isMobile ? 35 : 40}>
                 <div className="h-full bg-muted/30 flex items-center justify-center">
                   {loading ? (
                     <div className="text-center">
@@ -179,7 +181,7 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
               <ResizableHandle withHandle />
 
               {/* Extracted Data Panel */}
-              <ResizablePanel defaultSize={35} minSize={25}>
+              <ResizablePanel defaultSize={isMobile ? 42 : 35} minSize={isMobile ? 25 : 25}>
                 <ScrollArea className="h-full">
                   <div className="p-4 space-y-6">
                     {/* Extraction Status */}

@@ -245,7 +245,7 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
               <RefreshCw className="w-4 h-4 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-sm font-medium">Auto-renewal</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {hasAutoRenewal ? `On — renews every ${renewalPeriodDays} days` : "Off — renewal requires manual action"}
                 </p>
               </div>

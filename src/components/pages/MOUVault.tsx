@@ -123,7 +123,7 @@ export default function MOUVault() {
     <DashboardLayout title="MOU Vault" subtitle="Secure document storage with AI extraction">
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -167,7 +167,7 @@ export default function MOUVault() {
         {/* Tabs */}
         <Tabs defaultValue="vault">
           <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
-            <TabsList>
+            <TabsList className="w-full sm:w-auto justify-start overflow-x-auto">
               <TabsTrigger value="vault" className="gap-2">
                 <LayoutGrid className="w-4 h-4" />
                 Vault View
@@ -196,7 +196,7 @@ export default function MOUVault() {
                 />
               </div>
               <Select value={vendorFilter} onValueChange={setVendorFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Vendors" />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +209,7 @@ export default function MOUVault() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -221,7 +221,7 @@ export default function MOUVault() {
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>

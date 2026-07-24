@@ -1,10 +1,10 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppSidebar } from "./AppSidebar";
+import { AppSidebar, MobileNavigation } from "./AppSidebar";
 import { 
   Search, User, Settings, LogOut, UserCheck, PlusCircle, FilePlus, AlertCircle, 
   Building, FileText, Layout, Settings as SettingsIcon, ShieldCheck, Users, 
-  Briefcase, CheckSquare, Target, TrendingUp, Zap
+  Briefcase, CheckSquare, Target, TrendingUp, Zap, Menu
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
@@ -48,6 +48,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   // Check if the user is a manager or leader
   const canSeeInternalLogs = isAdmin || isStaff || isManager;
@@ -168,6 +169,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
 
   return (
     <div className="min-h-screen bg-background flex">
+      <MobileNavigation open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen} />
       <AppSidebar
         collapsed={sidebarCollapsed}
         onToggle={setSidebarCollapsed}
@@ -176,12 +178,21 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
       {/* Main Content */}
       <div className={cn(
         "flex-1 min-h-screen transition-all duration-300 w-full",
-        "lg:pl-64 md:pl-16",
+        "lg:pl-64",
         sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
       )}>
         {/* Top Header */}
         <header className="sticky top-0 z-30 h-14 sm:h-16 md:h-18 lg:h-20 bg-card/80 backdrop-blur-md border-b border-border flex items-center justify-between px-2 sm:px-3 md:px-4 lg:px-6 w-full overflow-hidden">
           <div className="flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 min-w-0 flex-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden shrink-0"
+              onClick={() => setMobileNavigationOpen(true)}
+              aria-label="Open navigation"
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
             {title && (
               <div className="min-w-0 flex-1">
                 <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-foreground font-montserrat tracking-tight leading-none truncate">{title}</h1>

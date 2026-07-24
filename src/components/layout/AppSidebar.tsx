@@ -29,6 +29,7 @@ import lazeezLogoWhite from "@/assets/Lazeez Events  - Logo - White_Logo - Main 
 import lazeezIcon from "@/assets/Lazeez Events  - Logo _Icon .png";
 import lazeezIconWhite from "@/assets/Lazeez Events  - Logo _Icon  copy 2.png";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,6 +55,92 @@ const navItems = [
 const bottomNavItems = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
+
+interface MobileNavigationProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function MobileNavigation({ open, onOpenChange }: MobileNavigationProps) {
+  const location = useLocation();
+  const { signOut, isAdmin, hasPermission, isManager, isHR, isStaff } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { theme } = useTheme();
+  const mobileLogo = theme === "dark" ? lazeezLogoWhite : lazeezLogo;
+
+  const handleLogout = async () => {
+    onOpenChange(false);
+    await signOut();
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-[86vw] max-w-sm p-0 flex flex-col">
+        <div className="h-16 px-4 border-b border-border flex items-center">
+          <img src={mobileLogo} alt="Lazeez Events" className="h-10 w-auto object-contain" />
+        </div>
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+          {navItems.map((item) => {
+            const isRestricted = item.label === "Audit Logs";
+            const canSeeRestricted = isAdmin || isManager || isHR || isStaff;
+            if (isRestricted && !canSeeRestricted) return null;
+            if (item.permission && !hasPermission(item.permission)) return null;
+
+            const isActive = location.pathname === item.href ||
+              (item.href !== "/dashboard" && location.pathname.startsWith(item.href));
+
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
+                  isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="font-medium text-sm flex-1">{item.label}</span>
+                {item.label === "Notifications" && unreadCount > 0 && (
+                  <Badge variant="secondary" className={cn("min-w-5 h-5 px-1 justify-center", isActive && "bg-white text-primary")}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Badge>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="border-t border-border p-3 space-y-1">
+          {bottomNavItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={() => onOpenChange(false)}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
+                location.pathname === item.href ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium text-sm">{item.label}</span>
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium text-sm">Logout</span>
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export function AppSidebar({ className, collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
@@ -86,7 +173,7 @@ export function AppSidebar({ className, collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen transition-all duration-300 flex flex-col",
+        "fixed left-0 top-0 z-40 hidden h-screen transition-all duration-300 lg:flex lg:flex-col",
         "bg-white/85 dark:bg-card/85 backdrop-blur-xl border-r border-border/50",
         "shadow-[0_8px_32px_rgba(0,0,0,0.08)]",
         collapsed ? "w-16" : "w-64",
