@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout";
 import {
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   RefreshCw,
   MessageSquare,
   Sparkles,
+  StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useMOUs } from "@/hooks/useMOUs";
 import { useIssues, useUpdateIssue, Issue } from "@/hooks/useIssues";
 import { useMOUVault } from "@/hooks/useMOUVault";
@@ -56,6 +58,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type EventType = "mou_expiration" | "issue_due" | "vault_expiration" | "vault_termination" | "payment" | "renewal";
 
@@ -91,6 +94,8 @@ export default function Calendar() {
     event: CalendarEvent;
     newDate: Date;
   } | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const { mous, isLoading: mousLoading, updateMOU } = useMOUs();
   const { data: issues, isLoading: issuesLoading } = useIssues();
@@ -99,7 +104,8 @@ export default function Calendar() {
   const { data: vendors } = useVendors();
   const updateIssue = useUpdateIssue();
   const navigate = useNavigate();
-  const { isStaff, isAdmin } = useAuth();
+  const { isStaff, isAdmin, user } = useAuth();
+  const queryClient = useQueryClient();
 
   const vendorMap = new Map<string, string>();
   vendors?.forEach((v) => vendorMap.set(v.id, v.name));
@@ -244,11 +250,56 @@ export default function Calendar() {
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
+  const { data: personalNotes = [] } = useQuery({
+    queryKey: ["calendar-personal-notes", user?.id, format(calendarStart, "yyyy-MM-dd"), format(calendarEnd, "yyyy-MM-dd")],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("calendar_personal_notes")
+        .select("id, note_date, content")
+        .eq("user_id", user!.id)
+        .gte("note_date", format(calendarStart, "yyyy-MM-dd"))
+        .lte("note_date", format(calendarEnd, "yyyy-MM-dd"));
+      if (error) throw error;
+      return (data || []) as PersonalCalendarNote[];
+    },
+    enabled: !!user?.id,
+  });
+
+  const notesByDate = useMemo(
+    () => new Map(personalNotes.map((note) => [note.note_date, note])),
+    [personalNotes],
+  );
+  const selectedNote = selectedDate ? notesByDate.get(format(selectedDate, "yyyy-MM-dd")) : undefined;
+
+  useEffect(() => {
+    setNoteDraft(selectedNote?.content || "");
+  }, [selectedDate, selectedNote?.content]);
+
   const getEventsForDay = (day: Date) => filteredEvents.filter((event) => isSameDay(event.date, day));
 
   const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const handleToday = () => setCurrentDate(new Date());
+
+  const handleSavePersonalNote = async () => {
+    if (!selectedDate || !user?.id) return;
+    const content = noteDraft.trim();
+    const noteDate = format(selectedDate, "yyyy-MM-dd");
+    setIsSavingNote(true);
+    try {
+      const notesTable = (supabase as any).from("calendar_personal_notes");
+      const { error } = content
+        ? await notesTable.upsert({ user_id: user.id, note_date: noteDate, content }, { onConflict: "user_id,note_date" })
+        : await notesTable.delete().eq("user_id", user.id).eq("note_date", noteDate);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+      toast.success(content ? "Personal note saved" : "Personal note cleared");
+    } catch {
+      toast.error("Could not save your personal note. Please run the latest database migration first.");
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   const canDragDrop = isStaff || isAdmin;
 
@@ -359,12 +410,12 @@ export default function Calendar() {
           {/* Calendar Header */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="flex w-full items-center gap-1 sm:w-auto sm:gap-2">
                   <Button variant="outline" size="icon" onClick={handlePrevMonth}>
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  <h2 className="text-lg font-semibold min-w-[180px] text-center">
+                  <h2 className="min-w-0 flex-1 text-center text-base font-semibold sm:min-w-[180px] sm:text-lg">
                     {format(currentDate, "MMMM yyyy")}
                   </h2>
                   <Button variant="outline" size="icon" onClick={handleNextMonth}>
@@ -373,7 +424,7 @@ export default function Calendar() {
                   <Button variant="outline" size="sm" onClick={handleToday}>Today</Button>
                 </div>
                 <Select value={filterType} onValueChange={(v: FilterType) => setFilterType(v)}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-full sm:w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -391,12 +442,12 @@ export default function Calendar() {
           {/* Calendar Grid */}
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-7 gap-1 mb-2">
+              <div className="mb-1 grid grid-cols-7 gap-px sm:mb-2 sm:gap-1">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">{day}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-px sm:gap-1">
                 {days.map((day, i) => {
                   const dayEvents = getEventsForDay(day);
                   const isCurrentMonth = isSameMonth(day, currentDate);
@@ -406,7 +457,7 @@ export default function Calendar() {
                     <div
                       key={i}
                       className={cn(
-                        "min-h-[100px] p-1 border rounded-md transition-all cursor-pointer relative",
+                        "relative min-h-[70px] cursor-pointer rounded-sm border p-1 transition-all sm:min-h-[100px] sm:rounded-md",
                         isCurrentMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
                         isToday(day) && "ring-2 ring-primary",
                         isSelected && "bg-primary/10",
@@ -423,7 +474,13 @@ export default function Calendar() {
                       )}>
                         {format(day, "d")}
                       </div>
-                      <div className="space-y-0.5 overflow-hidden">
+                      <div className="flex flex-wrap gap-0.5 sm:hidden">
+                        {dayEvents.slice(0, 4).map((event) => (
+                          <span key={event.id} className={cn("h-1.5 w-1.5 rounded-full border", getEventColor(event))} />
+                        ))}
+                        {notesByDate.has(format(day, "yyyy-MM-dd")) && <StickyNote className="h-3 w-3 text-primary" />}
+                      </div>
+                      <div className="hidden space-y-0.5 overflow-hidden sm:block">
                         {dayEvents.slice(0, 3).map((event) => {
                           const Icon = getEventIcon(event);
                           return (
@@ -461,11 +518,14 @@ export default function Calendar() {
                 <CardTitle className="text-sm">Events for {format(selectedDate, "MMMM d, yyyy")}</CardTitle>
               </CardHeader>
               <CardContent>
-                {getEventsForDay(selectedDate).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No events on this day</p>
-                ) : (
-                  <div className="space-y-2">
-                    {getEventsForDay(selectedDate).map((event) => {
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Scheduled events</p>
+                    {getEventsForDay(selectedDate).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No events on this day</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {getEventsForDay(selectedDate).map((event) => {
                       const Icon = getEventIcon(event);
                       return (
                         <div
@@ -489,9 +549,44 @@ export default function Calendar() {
                           {event.status && <p className="text-xs mt-1 opacity-80">Status: {event.status.replace("_", " ").toUpperCase()}</p>}
                         </div>
                       );
-                    })}
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <StickyNote className="h-4 w-4 text-primary" />
+                      <Label htmlFor="personal-calendar-note" className="text-sm font-semibold">Personal note</Label>
+                    </div>
+                    <p className="mb-3 text-xs text-muted-foreground">Private to your account. Add a reminder, call note, or plan for this date.</p>
+                    {user ? (
+                      <>
+                        <Textarea
+                          id="personal-calendar-note"
+                          value={noteDraft}
+                          onChange={(event) => setNoteDraft(event.target.value)}
+                          maxLength={2000}
+                          placeholder="Write your note for this date…"
+                          className="min-h-[110px] resize-none bg-background"
+                        />
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted-foreground">{noteDraft.length}/2000</span>
+                          <div className="flex gap-2">
+                            {selectedNote && (
+                              <Button variant="ghost" size="sm" onClick={() => setNoteDraft("")} disabled={isSavingNote}>Clear</Button>
+                            )}
+                            <Button size="sm" onClick={handleSavePersonalNote} disabled={isSavingNote || noteDraft.trim() === (selectedNote?.content || "")}>
+                              {isSavingNote ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <StickyNote className="mr-2 h-3.5 w-3.5" />}
+                              Save note
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Sign in to keep personal notes on your calendar.</p>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -620,4 +715,10 @@ export default function Calendar() {
       </Dialog>
     </DashboardLayout>
   );
+}
+
+interface PersonalCalendarNote {
+  id: string;
+  note_date: string;
+  content: string;
 }

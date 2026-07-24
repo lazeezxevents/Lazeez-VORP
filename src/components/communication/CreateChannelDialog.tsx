@@ -41,33 +41,17 @@ export const CreateChannelDialog = ({
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      // Create channel
-      const { data: channel, error: channelError } = await supabase
-        .from('channels')
-        .insert({
-          department_id: departmentId,
-          name: name.trim().toLowerCase().replace(/\s+/g, '-'),
-          description: description.trim() || null,
-          purpose: purpose.trim() || null,
-          is_private: isPrivate,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      // The database function creates the channel and its owner membership in one
+      // transaction. This avoids the member-policy recursion caused by two client calls.
+      const { data: channel, error } = await (supabase as any).rpc('create_communication_channel', {
+        p_department_id: departmentId,
+        p_name: name,
+        p_description: description || null,
+        p_purpose: purpose || null,
+        p_is_private: isPrivate,
+      });
 
-      if (channelError) throw channelError;
-
-      // Add creator as owner
-      const { error: memberError } = await supabase
-        .from('channel_members')
-        .insert({
-          channel_id: channel.id,
-          user_id: user.id,
-          role: 'owner',
-        });
-
-      if (memberError) throw memberError;
-
+      if (error) throw error;
       return channel;
     },
     onSuccess: () => {

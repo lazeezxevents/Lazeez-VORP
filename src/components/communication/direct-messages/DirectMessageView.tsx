@@ -112,7 +112,7 @@ export const DirectMessageView: React.FC = () => {
   return (
     <div className="flex h-full bg-background">
       {/* Conversations Sidebar */}
-      <div className="w-80 border-r border-border flex-shrink-0">
+      <div className={cn("w-full border-r border-border sm:w-80 sm:flex-shrink-0", selectedConversation && "hidden sm:block")}>
         <DirectMessageList
           conversations={listConversations}
           activeConversationId={selectedConversationId || undefined}
@@ -123,7 +123,7 @@ export const DirectMessageView: React.FC = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn("min-w-0 flex-1 flex-col", selectedConversation ? "flex" : "hidden sm:flex")}>
         <AnimatePresence mode="wait">
           {selectedConversation ? (
             <DirectMessageChat

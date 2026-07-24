@@ -284,11 +284,7 @@ export const DepartmentSidebar = ({
 
       const { data, error } = await supabase
         .from('channels')
-        .select(`
-          *,
-          channel_members!inner(user_id)
-        `)
-        .eq('channel_members.user_id', user.id)
+        .select('*')
         .eq('is_archived', false)
         .order('name');
       
@@ -309,11 +305,7 @@ export const DepartmentSidebar = ({
 
       const { data, error } = await supabase
         .from('channels')
-        .select(`
-          *,
-          channel_members!inner(user_id)
-        `)
-        .eq('channel_members.user_id', user.id)
+        .select('*')
         .eq('is_archived', true)
         .order('name');
 

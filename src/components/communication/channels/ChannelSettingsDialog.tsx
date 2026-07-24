@@ -7,7 +7,7 @@
  * Requirements: 14.2-14.7, 15.1-15.7, 26.1-26.6, 26.9-26.11
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Settings,
   Lock,
@@ -128,6 +128,15 @@ export const ChannelSettingsDialog = ({
   const [showRemoveMemberConfirm, setShowRemoveMemberConfirm] = useState<string | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState<ChannelMember | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setChannelName(channel.name);
+    setChannelDescription(channel.description || '');
+    setChannelPurpose(channel.purpose || '');
+    setIsPrivate(channel.isPrivate);
+    setActiveTab('general');
+  }, [channel, isOpen]);
 
   const currentUserMember = members.find((m) => m.userId === currentUserId);
   const isOwner = currentUserMember?.role === 'owner';
