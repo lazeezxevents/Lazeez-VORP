@@ -230,15 +230,15 @@ export default function Dashboard() {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Issues */}
-          <div className="lg:col-span-2">
-            <Card>
+          <div className="lg:col-span-2 h-full">
+            <Card className="min-h-[32rem] h-full flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg font-semibold">Recent Issues</CardTitle>
                 <Badge variant="secondary" className="font-normal">
                   {issues?.length || 0} total
                 </Badge>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 {isLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
