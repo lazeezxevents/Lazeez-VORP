@@ -17,7 +17,9 @@ import {
     MOU_SECTION_HEADINGS,
     MOU_TABLE_HEADERS,
     applyMOUPlaceholders,
+    getUserBoldValues,
     resolveMOUValues,
+    splitLineForBold,
     type MOUTemplateData,
 } from "./mouTemplate";
 
@@ -37,33 +39,53 @@ const cellBorder = {
     right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
 };
 
-const paragraphFromLine = (line: string): Paragraph => {
+const paragraphFromLine = (line: string, boldValues: string[]): Paragraph => {
     const trimmed = line.trimEnd();
     if (!trimmed) {
         return new Paragraph({ text: "", spacing: { after: 120 } });
     }
 
+    const isMainTitle = trimmed === "Memorandum of Understanding";
     const isHeading = MOU_SECTION_HEADINGS.some(h => trimmed === h);
-    const isBold = isHeading || /^\d+\.\s/.test(trimmed);
+    const isNumberedSection = /^\d+\.\s/.test(trimmed);
+    const hasUserValues = boldValues.some(v => trimmed.includes(v));
 
+    if (isMainTitle || isHeading) {
+        return new Paragraph({
+            children: [
+                new TextRun({
+                    text: trimmed,
+                    bold: true,
+                    size: isMainTitle ? 28 : 22,
+                }),
+            ],
+            spacing: { after: isHeading ? 160 : 200 },
+            alignment: isMainTitle ? AlignmentType.CENTER : AlignmentType.LEFT,
+        });
+    }
+
+    if (isNumberedSection && !hasUserValues) {
+        return new Paragraph({
+            children: [new TextRun({ text: trimmed, bold: true, size: 20 })],
+            spacing: { after: 120 },
+        });
+    }
+
+    const segments = splitLineForBold(trimmed, boldValues);
     return new Paragraph({
-        children: [
-            new TextRun({
-                text: trimmed,
-                bold: isBold,
-                size: trimmed === "Memorandum of Understanding" ? 28 : 20,
-            }),
-        ],
-        spacing: { after: isHeading ? 160 : 120 },
-        alignment: trimmed === "Memorandum of Understanding" ? AlignmentType.CENTER : AlignmentType.LEFT,
+        children: segments.map(seg =>
+            new TextRun({ text: seg.text, bold: seg.bold, size: 20 })
+        ),
+        spacing: { after: 120 },
     });
 };
 
-const contentToParagraphs = (content: string): Paragraph[] =>
-    content.split("\n").map(paragraphFromLine);
+const contentToParagraphs = (content: string, boldValues: string[]): Paragraph[] =>
+    content.split("\n").map(line => paragraphFromLine(line, boldValues));
 
 export const generateEliteDOCX = async (data: DOCXGenerationData) => {
     const values = resolveMOUValues(data);
+    const boldValues = getUserBoldValues(data);
 
     // Always use locked template — ignore uploaded/OCR templateText
     const filledTemplate = applyMOUPlaceholders(data);
@@ -125,10 +147,10 @@ export const generateEliteDOCX = async (data: DOCXGenerationData) => {
                 properties: {},
                 children: [
                     logoParagraph,
-                    ...contentToParagraphs(beforeTable),
+                    ...contentToParagraphs(beforeTable, boldValues),
                     table,
                     new Paragraph({ text: "", spacing: { before: 200, after: 200 } }),
-                    ...contentToParagraphs(afterTable.trim()),
+                    ...contentToParagraphs(afterTable.trim(), boldValues),
                 ],
             },
         ],

@@ -6,7 +6,9 @@ import {
     MOU_SECTION_HEADINGS,
     MOU_TABLE_HEADERS,
     applyMOUPlaceholders,
+    getUserBoldValues,
     resolveMOUValues,
+    splitLineForBold,
     type MOUTemplateData,
 } from "./mouTemplate";
 
@@ -50,19 +52,61 @@ const renderParagraph = (
     y: number,
     maxWidth: number,
     lineHeight: number,
-    bold = false
+    bold = false,
+    align: "left" | "center" = "left"
 ): number => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
     const lines = doc.splitTextToSize(text, maxWidth);
-    doc.text(lines, x, y);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    for (let i = 0; i < lines.length; i++) {
+        const lineY = y + i * lineHeight;
+        if (align === "center") {
+            doc.text(lines[i], pageWidth / 2, lineY, { align: "center" });
+        } else {
+            doc.text(lines[i], x, lineY);
+        }
+    }
     return y + lines.length * lineHeight;
+};
+
+const renderLineWithBoldValues = (
+    doc: jsPDF,
+    line: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number,
+    boldValues: string[],
+    align: "left" | "center" = "left"
+): number => {
+    const segments = splitLineForBold(line, boldValues);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let cursorX = align === "center" ? (pageWidth - maxWidth) / 2 : x;
+
+    if (align === "center") {
+        doc.setFont("helvetica", "normal");
+        const totalWidth = segments.reduce((sum, seg) => {
+            doc.setFont("helvetica", seg.bold ? "bold" : "normal");
+            return sum + doc.getTextWidth(seg.text);
+        }, 0);
+        cursorX = (pageWidth - totalWidth) / 2;
+    }
+
+    for (const seg of segments) {
+        doc.setFont("helvetica", seg.bold ? "bold" : "normal");
+        doc.text(seg.text, cursorX, y);
+        cursorX += doc.getTextWidth(seg.text);
+    }
+
+    return y + lineHeight;
 };
 
 const renderLockedContent = (
     doc: jsPDF,
     content: string,
     startY: number,
-    pageWidth: number
+    pageWidth: number,
+    boldValues: string[]
 ): number => {
     const margin = 20;
     const maxWidth = pageWidth - margin * 2;
@@ -77,15 +121,25 @@ const renderLockedContent = (
             continue;
         }
 
+        const isMainTitle = line === "Memorandum of Understanding";
         const isHeading = MOU_SECTION_HEADINGS.some(h => line === h);
         const isNumberedSection = /^\d+\.\s/.test(line);
         const isSubSection = /^[12]\.\s/.test(line) && line.includes("Responsibilities");
 
         y = ensurePageSpace(doc, y, lineHeight * 3);
 
+        if (isMainTitle) {
+            y += 4;
+            doc.setFontSize(14);
+            y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true, "center");
+            y += 2;
+            doc.setFontSize(10);
+            continue;
+        }
+
         if (isHeading) {
             y += 4;
-            doc.setFontSize(isHeading && line === "Memorandum of Understanding" ? 14 : 11);
+            doc.setFontSize(11);
             y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true);
             y += 2;
             doc.setFontSize(10);
@@ -93,11 +147,15 @@ const renderLockedContent = (
         }
 
         if (isNumberedSection || isSubSection) {
-            y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true);
+            if (boldValues.some(v => line.includes(v))) {
+                y = renderLineWithBoldValues(doc, line, margin, y, maxWidth, lineHeight, boldValues);
+            } else {
+                y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, true);
+            }
             continue;
         }
 
-        y = renderParagraph(doc, line, margin, y, maxWidth, lineHeight, false);
+        y = renderLineWithBoldValues(doc, line, margin, y, maxWidth, lineHeight, boldValues);
     }
 
     return y;
@@ -107,6 +165,7 @@ export const generateEliteMOU = async (data: MOUGenerationData) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const values = resolveMOUValues(data);
+    const boldValues = getUserBoldValues(data);
 
     // Locked logo header — always Lazeez Events branding from assets
     let currentY = 18;
@@ -133,7 +192,7 @@ export const generateEliteMOU = async (data: MOUGenerationData) => {
     const filledTemplate = applyMOUPlaceholders(data);
     const [beforeTable, afterTable] = filledTemplate.split(MOU_PRODUCT_TABLE_MARKER);
 
-    currentY = renderLockedContent(doc, beforeTable, currentY, pageWidth);
+    currentY = renderLockedContent(doc, beforeTable, currentY, pageWidth, boldValues);
     currentY += 4;
 
     // Product table — 3 columns only (no discounted price)
@@ -155,7 +214,7 @@ export const generateEliteMOU = async (data: MOUGenerationData) => {
     currentY = (doc as any).lastAutoTable.finalY + 8;
 
     if (afterTable) {
-        currentY = renderLockedContent(doc, afterTable.trim(), currentY, pageWidth);
+        currentY = renderLockedContent(doc, afterTable.trim(), currentY, pageWidth, boldValues);
     }
 
     const blob = doc.output("blob");

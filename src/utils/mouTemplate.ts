@@ -191,16 +191,73 @@ Name: Syed Raza Abbas Abidi
 Designation: Co-lead and Sales Executive
 Date: _____{{SIGNATURE_DATE}}__________
 
-Signature: ______________________
-Name: Ali Ayaz Sewani
-Designation: Graphics & Branch Operation Lead
-Date: _____{{SIGNATURE_DATE}}__________
-
 For Vendor:
 Signature: _________________ ______
 Name: {{OWNER_NAME}} CNIC No. of the Representative: {{CNIC}}
 Designation: ______Owner_________
 Date: _________{{SIGNATURE_DATE}}_______`;
+
+/** User-provided values to render bold (excludes menu items) */
+export const getUserBoldValues = (data: MOUTemplateData): string[] => {
+    const v = resolveMOUValues(data);
+    return [
+        v.date,
+        v.signatureDate,
+        v.vendorName,
+        v.vendorCategory,
+        v.vendorAddress,
+        v.bankName,
+        v.bankAccount,
+        v.bankTitle,
+        v.ownerName,
+        v.cnic,
+        v.commission,
+        v.subscriptionThreshold,
+        v.subscriptionCost,
+        v.termMonths,
+    ].filter((value, index, arr) => value && arr.indexOf(value) === index)
+        .sort((a, b) => b.length - a.length);
+};
+
+export type MOUTextSegment = { text: string; bold: boolean };
+
+/** Split a line into normal/bold segments for user-provided values */
+export const splitLineForBold = (line: string, boldValues: string[]): MOUTextSegment[] => {
+    if (!line || boldValues.length === 0) return [{ text: line, bold: false }];
+
+    type Match = { start: number; end: number };
+    const matches: Match[] = [];
+
+    for (const value of boldValues) {
+        let from = 0;
+        while (from < line.length) {
+            const idx = line.indexOf(value, from);
+            if (idx === -1) break;
+            const overlap = matches.some(m => idx < m.end && idx + value.length > m.start);
+            if (!overlap) matches.push({ start: idx, end: idx + value.length });
+            from = idx + 1;
+        }
+    }
+
+    if (matches.length === 0) return [{ text: line, bold: false }];
+
+    matches.sort((a, b) => a.start - b.start);
+    const merged: Match[] = [];
+    for (const m of matches) {
+        const last = merged[merged.length - 1];
+        if (!last || m.start >= last.end) merged.push(m);
+    }
+
+    const segments: MOUTextSegment[] = [];
+    let cursor = 0;
+    for (const m of merged) {
+        if (m.start > cursor) segments.push({ text: line.slice(cursor, m.start), bold: false });
+        segments.push({ text: line.slice(m.start, m.end), bold: true });
+        cursor = m.end;
+    }
+    if (cursor < line.length) segments.push({ text: line.slice(cursor), bold: false });
+    return segments;
+};
 
 export const applyMOUPlaceholders = (data: MOUTemplateData): string => {
     const v = resolveMOUValues(data);
