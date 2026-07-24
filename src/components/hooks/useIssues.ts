@@ -12,6 +12,8 @@ export interface Issue {
   title: string;
   description: string | null;
   vendor_id: string | null;
+  project_id: string | null;
+  project_task_id: string | null;
   priority: IssuePriority;
   status: IssueStatus;
   assigned_to: string | null;
@@ -23,6 +25,8 @@ export interface Issue {
   vendor?: { name: string } | null;
   reporter?: { full_name: string | null; email: string } | null;
   assignee?: { full_name: string | null; email: string } | null;
+  project?: { name: string } | null;
+  project_task?: { title: string; project_id: string } | null;
 }
 
 export interface CreateIssueInput {
@@ -32,6 +36,8 @@ export interface CreateIssueInput {
   priority?: IssuePriority;
   due_date?: string;
   assigned_to?: string;
+  project_id?: string;
+  project_task_id?: string;
 }
 
 export function useIssues() {
@@ -40,11 +46,15 @@ export function useIssues() {
   const query = useQuery({
     queryKey: ["issues"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("issues")
+      const { data, error } = await (supabase
+        .from("issues") as any)
         .select(`
           *,
-          vendor:vendors(name)
+          vendor:vendors(name),
+          assignee:profiles!issues_assigned_to_fkey(full_name, email),
+          reporter:profiles!issues_reported_by_fkey(full_name, email),
+          project:projects(name),
+          project_task:project_tasks(title, project_id)
         `)
         .order("created_at", { ascending: false });
 
@@ -98,11 +108,15 @@ export function useIssue(id: string) {
   return useQuery({
     queryKey: ["issues", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("issues")
+      const { data, error } = await (supabase
+        .from("issues") as any)
         .select(`
           *,
-          vendor:vendors(name)
+          vendor:vendors(name),
+          assignee:profiles!issues_assigned_to_fkey(full_name, email),
+          reporter:profiles!issues_reported_by_fkey(full_name, email),
+          project:projects(name),
+          project_task:project_tasks(title, project_id)
         `)
         .eq("id", id)
         .maybeSingle();

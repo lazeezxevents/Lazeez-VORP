@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, Edit, Trash2, Clock, User, Calendar, Tag, Eye } from "lucide-react";
+import { X, Edit, Trash2, Clock, User, Calendar, Tag, Eye, FolderKanban, ListTodo } from "lucide-react";
 import { format } from "date-fns";
 import {
   Sheet,
@@ -255,6 +255,24 @@ export function IssueDetailSheet({
                       <p className="text-sm text-foreground">
                         {issue.assignee?.full_name || issue.assignee?.email || "—"}
                       </p>
+                    </div>
+
+                    {/* Linked Project */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                        <FolderKanban className="w-3.5 h-3.5" />
+                        Project
+                      </label>
+                      <p className="text-sm text-foreground">{issue.project?.name || "â€”"}</p>
+                    </div>
+
+                    {/* Linked Project Task */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                        <ListTodo className="w-3.5 h-3.5" />
+                        Project Task
+                      </label>
+                      <p className="text-sm text-foreground">{issue.project_task?.title || "â€”"}</p>
                     </div>
 
                     {/* Reporter */}

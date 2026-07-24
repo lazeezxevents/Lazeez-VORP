@@ -5,6 +5,7 @@ import {
   Plus,
   MoreHorizontal,
   Clock,
+  User,
   AlertCircle,
   CheckCircle2,
   LayoutGrid,
@@ -17,6 +18,7 @@ import {
   ClipboardList,
   ListFilter,
   TimerReset,
+  FolderKanban,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -335,6 +337,18 @@ export default function Issues() {
                         </p>
                         <div className="min-h-5 text-xs text-muted-foreground mb-3">
                           {issue.vendor?.name || "No vendor linked"}
+                        </div>
+                        <div className="mb-3 space-y-1.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <User className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{issue.assignee?.full_name || issue.assignee?.email || "Unassigned"}</span>
+                          </div>
+                          {issue.project_task && (
+                            <div className="flex items-center gap-1.5 truncate text-primary">
+                              <FolderKanban className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{issue.project_task.title}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">

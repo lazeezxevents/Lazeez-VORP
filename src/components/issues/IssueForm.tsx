@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateIssue, useUpdateIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { useVendors } from "@/hooks/useVendors";
+import { supabase } from "@/integrations/supabase/client";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -36,6 +38,9 @@ const issueSchema = z.object({
   priority: z.enum(["critical", "high", "medium", "low"]),
   status: z.enum(["open", "in_progress", "resolved", "closed"]),
   due_date: z.string().optional(),
+  assigned_to: z.string().optional(),
+  project_id: z.string().optional(),
+  project_task_id: z.string().optional(),
 });
 
 type IssueFormData = z.infer<typeof issueSchema>;
@@ -64,6 +69,22 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
   const createIssue = useCreateIssue();
   const updateIssue = useUpdateIssue();
   const { data: vendors } = useVendors();
+  const { data: employees = [] } = useQuery({
+    queryKey: ["issue-assignees"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const { data: projects = [] } = useQuery({
+    queryKey: ["issue-projects"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("projects") as any).select("id, name").order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
   const isEditing = !!issue;
 
   const form = useForm<IssueFormData>({
@@ -75,11 +96,30 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
       priority: issue?.priority || "medium",
       status: issue?.status || "open",
       due_date: issue?.due_date ? issue.due_date.split("T")[0] : "",
+      assigned_to: issue?.assigned_to || "none",
+      project_id: issue?.project_id || "none",
+      project_task_id: issue?.project_task_id || "none",
+    },
+  });
+  const selectedProjectId = form.watch("project_id");
+  const { data: projectTasks = [] } = useQuery({
+    queryKey: ["issue-project-tasks", selectedProjectId],
+    enabled: !!selectedProjectId && selectedProjectId !== "none",
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("project_tasks") as any)
+        .select("id, title, project_id, assigned_to")
+        .eq("project_id", selectedProjectId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
   });
 
   const onSubmit = async (data: IssueFormData) => {
-    const vendorId = data.vendor_id === "none" ? undefined : data.vendor_id;
+    const vendorId = data.vendor_id === "none" ? (isEditing ? null : undefined) : data.vendor_id;
+    const assigneeId = data.assigned_to === "none" ? (isEditing ? null : undefined) : data.assigned_to;
+    const projectId = data.project_id === "none" ? (isEditing ? null : undefined) : data.project_id;
+    const taskId = data.project_task_id === "none" ? (isEditing ? null : undefined) : data.project_task_id;
     if (isEditing) {
       await updateIssue.mutateAsync({ 
         id: issue.id, 
@@ -89,6 +129,9 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
         priority: data.priority,
         status: data.status,
         due_date: data.due_date || undefined,
+        assigned_to: assigneeId,
+        project_id: projectId,
+        project_task_id: taskId,
       });
     } else {
       await createIssue.mutateAsync({
@@ -97,6 +140,9 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
         vendor_id: vendorId,
         priority: data.priority,
         due_date: data.due_date || undefined,
+        assigned_to: assigneeId,
+        project_id: projectId,
+        project_task_id: taskId,
       });
     }
     onOpenChange(false);
@@ -128,7 +174,7 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="vendor_id"
@@ -172,6 +218,74 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                           <SelectItem key={p.value} value={p.value}>
                             {p.label}
                           </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="assigned_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assign to employee</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            {employee.full_name || employee.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="project_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link project</FormLabel>
+                    <Select onValueChange={(value) => { field.onChange(value); form.setValue("project_task_id", "none"); }} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No project</SelectItem>
+                        {projects.map((project: { id: string; name: string }) => (
+                          <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="project_task_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link project task</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={selectedProjectId === "none"}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder={selectedProjectId === "none" ? "Choose a project first" : "Select project task"} /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No linked task</SelectItem>
+                        {projectTasks.map((task: { id: string; title: string }) => (
+                          <SelectItem key={task.id} value={task.id}>{task.title}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
