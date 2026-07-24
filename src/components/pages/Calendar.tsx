@@ -15,6 +15,9 @@ import {
   Sparkles,
   StickyNote,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +100,9 @@ export default function Calendar() {
   } | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [draggedNote, setDraggedNote] = useState<PersonalCalendarNote | null>(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
 
   const { mous, isLoading: mousLoading, updateMOU } = useMOUs();
   const { data: issues, isLoading: issuesLoading } = useIssues();
@@ -302,6 +308,71 @@ export default function Calendar() {
     }
   };
 
+  const handleDragStartNote = (note: PersonalCalendarNote, e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedNote(note);
+  };
+
+  const handleDropNote = (day: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedNote && user?.id) {
+      const newDate = format(day, "yyyy-MM-dd");
+      const oldDate = draggedNote.note_date;
+      
+      if (newDate !== oldDate) {
+        (supabase as any).from("calendar_personal_notes")
+          .update({ note_date: newDate })
+          .eq("id", draggedNote.id)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+            toast.success("Note moved to new date");
+          });
+      }
+    }
+    setDraggedNote(null);
+  };
+
+  const toggleNoteExpansion = (noteId: string) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleDeleteNote = async (noteId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user?.id) return;
+    try {
+      await (supabase as any).from("calendar_personal_notes").delete().eq("id", noteId).eq("user_id", user.id);
+      await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+      toast.success("Note deleted");
+    } catch {
+      toast.error("Failed to delete note");
+    }
+  };
+
+  const handleEditNote = (note: PersonalCalendarNote) => {
+    const date = parseISO(note.note_date);
+    setCurrentDate(date);
+    setSelectedDate(date);
+    setNoteDraft(note.content);
+    setNoteDialogOpen(true);
+  };
+
+  const handleCreateNote = () => {
+    if (!selectedDate) {
+      toast.error("Please select a date first");
+      return;
+    }
+    setNoteDraft("");
+    setNoteDialogOpen(true);
+  };
+
   const canDragDrop = isStaff || isAdmin;
 
   const handleDragStart = (event: CalendarEvent, e: React.DragEvent) => {
@@ -466,8 +537,15 @@ export default function Calendar() {
                         draggedEvent && "hover:scale-[1.02] hover:shadow-lg hover:border-primary/50 hover:bg-primary/5 active:scale-95"
                       )}
                       onClick={() => setSelectedDate(day)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(day, e)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (draggedNote) e.dataTransfer.dropEffect = "move";
+                        handleDragOver(e);
+                      }}
+                      onDrop={(e) => {
+                        handleDropNote(day, e);
+                        handleDrop(day, e);
+                      }}
                     >
                       <div className={cn(
                         "text-xs font-medium mb-1",
@@ -530,7 +608,7 @@ export default function Calendar() {
                 <CardTitle className="text-sm">Events for {format(selectedDate, "MMMM d, yyyy")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-5 lg:grid-cols-2">
+                <div className="grid gap-5 lg:grid-cols-1">
                   <div>
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Scheduled events</p>
                     {getEventsForDay(selectedDate).length === 0 ? (
@@ -565,58 +643,6 @@ export default function Calendar() {
                       </div>
                     )}
                   </div>
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                    <div className="mb-2 flex items-center gap-2">
-                      <StickyNote className="h-4 w-4 text-primary" />
-                      <Label htmlFor="personal-calendar-note" className="text-sm font-semibold">Personal note</Label>
-                    </div>
-                    <p className="mb-3 text-xs text-muted-foreground">Private to your account. Add a reminder, call note, or plan for this date.</p>
-                    {user ? (
-                      <>
-                        <Textarea
-                          id="personal-calendar-note"
-                          value={noteDraft}
-                          onChange={(event) => setNoteDraft(event.target.value)}
-                          maxLength={2000}
-                          placeholder="Write your note for this date…"
-                          className="min-h-[110px] resize-none bg-background"
-                        />
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-[11px] text-muted-foreground">{noteDraft.length}/2000</span>
-                          <div className="flex gap-2">
-                            {selectedNote && (
-                              <Button variant="ghost" size="sm" onClick={() => setNoteDraft("")} disabled={isSavingNote}>Clear</Button>
-                            )}
-                            {selectedNote && (
-                              <Button variant="destructive" size="sm" onClick={async () => {
-                                if (!selectedDate || !user?.id) return;
-                                const noteDate = format(selectedDate, "yyyy-MM-dd");
-                                setIsSavingNote(true);
-                                try {
-                                  await (supabase as any).from("calendar_personal_notes").delete().eq("user_id", user.id).eq("note_date", noteDate);
-                                  await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
-                                  setNoteDraft("");
-                                  toast.success("Note deleted");
-                                } catch {
-                                  toast.error("Failed to delete note");
-                                } finally {
-                                  setIsSavingNote(false);
-                                }
-                              }} disabled={isSavingNote}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            <Button size="sm" onClick={handleSavePersonalNote} disabled={isSavingNote || noteDraft.trim() === (selectedNote?.content || "")}>
-                              {isSavingNote ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <StickyNote className="mr-2 h-3.5 w-3.5" />}
-                              Save note
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Sign in to keep personal notes on your calendar.</p>
-                    )}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -627,33 +653,75 @@ export default function Calendar() {
         <div className="space-y-4">
           <Card className="border-primary/20 bg-primary/[0.03]">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <StickyNote className="h-4 w-4 text-primary" />
-                My notes
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <StickyNote className="h-4 w-4 text-primary" />
+                  My notes
+                </CardTitle>
+                {user && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCreateNote}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {personalNotes.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Select a calendar date to add your first private note.</p>
               ) : (
-                <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
                   {[...personalNotes]
                     .sort((a, b) => a.note_date.localeCompare(b.note_date))
-                    .map((note) => (
-                      <button
-                        key={note.id}
-                        type="button"
-                        onClick={() => {
-                          const date = parseISO(note.note_date);
-                          setCurrentDate(date);
-                          setSelectedDate(date);
-                        }}
-                        className="w-full rounded-lg border bg-background p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                      >
-                        <p className="mb-1 text-[11px] font-semibold text-primary">{format(parseISO(note.note_date), "EEE, MMM d")}</p>
-                        <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{note.content}</p>
-                      </button>
-                    ))}
+                    .map((note) => {
+                      const isExpanded = expandedNotes.has(note.id);
+                      return (
+                        <div
+                          key={note.id}
+                          draggable
+                          onDragStart={(e) => handleDragStartNote(note, e)}
+                          className="group relative rounded-lg border bg-background transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:bg-primary/5"
+                        >
+                          <div className="flex items-start gap-2 p-2.5">
+                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditNote(note)}
+                                className="w-full text-left"
+                              >
+                                <p className="mb-1 text-[11px] font-semibold text-primary">{format(parseISO(note.note_date), "EEE, MMM d")}</p>
+                                <p className={cn(
+                                  "text-xs leading-relaxed text-muted-foreground transition-all duration-300",
+                                  isExpanded ? "line-clamp-none" : "line-clamp-2"
+                                )}>
+                                  {note.content}
+                                </p>
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => toggleNoteExpansion(note.id)}
+                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteNote(note.id, e)}
+                                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </CardContent>
@@ -766,6 +834,63 @@ export default function Calendar() {
           </Card>
         </div>
       </div>
+
+      {/* Note Dialog */}
+      <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedNote ? "Edit Note" : "Add Note"}</DialogTitle>
+          </DialogHeader>
+          {selectedDate && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Note for {format(selectedDate, "MMMM d, yyyy")}
+              </p>
+              <Textarea
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                maxLength={2000}
+                placeholder="Write your note for this date…"
+                className="min-h-[120px] resize-none"
+                autoFocus
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">{noteDraft.length}/2000</span>
+                <div className="flex gap-2">
+                  {selectedNote && (
+                    <Button variant="destructive" size="sm" onClick={async () => {
+                      if (!selectedDate || !user?.id) return;
+                      const noteDate = format(selectedDate, "yyyy-MM-dd");
+                      setIsSavingNote(true);
+                      try {
+                        await (supabase as any).from("calendar_personal_notes").delete().eq("user_id", user.id).eq("note_date", noteDate);
+                        await queryClient.invalidateQueries({ queryKey: ["calendar-personal-notes", user.id] });
+                        setNoteDraft("");
+                        setNoteDialogOpen(false);
+                        toast.success("Note deleted");
+                      } catch {
+                        toast.error("Failed to delete note");
+                      } finally {
+                        setIsSavingNote(false);
+                      }
+                    }} disabled={isSavingNote}>
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      Delete
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={async () => {
+                    await handleSavePersonalNote();
+                    if (!isSavingNote) setNoteDialogOpen(false);
+                  }} disabled={isSavingNote || noteDraft.trim() === (selectedNote?.content || "")}>
+                    {isSavingNote ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <StickyNote className="mr-2 h-3.5 w-3.5" />}
+                    Save note
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Reschedule Dialog */}
       <Dialog open={!!rescheduleDialog} onOpenChange={() => setRescheduleDialog(null)}>
