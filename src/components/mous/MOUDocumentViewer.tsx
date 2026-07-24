@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,7 +25,7 @@ import {
   ResizablePanel, 
   ResizableHandle 
 } from "@/components/ui/resizable";
-import { MOUVaultItem, useTriggerExtraction } from "@/hooks/useMOUVault";
+import { MOUVaultItem, useTriggerExtraction, useUpdateVaultItem } from "@/hooks/useMOUVault";
 import { MOURenewalTimeline } from "./MOURenewalTimeline";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const triggerExtraction = useTriggerExtraction();
+  const updateItem = useUpdateVaultItem();
 
   useEffect(() => {
     if (item && open) {
@@ -92,6 +94,23 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
   if (!item) return null;
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
+  const hasAutoRenewal = typeof item.has_auto_renewal === "boolean"
+    ? item.has_auto_renewal
+    : extractedTerms?.has_auto_renewal === true;
+  const renewalPeriodDays = item.renewal_period_days || Number(extractedTerms?.renewal_period_days) || 365;
+
+  const handleAutoRenewalChange = async (enabled: boolean) => {
+    await updateItem.mutateAsync({
+      id: item.id,
+      has_auto_renewal: enabled,
+      ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+      extracted_terms: {
+        ...(extractedTerms || {}),
+        has_auto_renewal: enabled,
+        ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+      },
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -305,33 +324,37 @@ export function MOUDocumentViewer({ item, open, onOpenChange, vendorStatus }: MO
                     </div>
 
                     {/* Auto-Renewal */}
-                    {extractedTerms?.has_auto_renewal !== undefined && (
-                      <>
-                        <Separator />
-                        <div>
-                          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                            <RefreshCw className="w-4 h-4" />
-                            Renewal
-                          </h3>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Auto-Renewal</span>
-                              <Badge variant={extractedTerms.has_auto_renewal ? "default" : "outline"}>
-                                {extractedTerms.has_auto_renewal ? "Yes" : "No"}
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4" />
+                          Renewal
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Auto-Renewal</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={hasAutoRenewal ? "default" : "outline"}>
+                                {hasAutoRenewal ? "On" : "Off"}
                               </Badge>
+                              <Switch
+                                checked={hasAutoRenewal}
+                                onCheckedChange={(enabled) => void handleAutoRenewalChange(enabled)}
+                                disabled={updateItem.isPending}
+                                aria-label={`Turn auto-renewal ${hasAutoRenewal ? "off" : "on"} for ${item.document_name}`}
+                              />
                             </div>
-                            {extractedTerms.renewal_period_days && (
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Renewal Period</span>
-                                <span className="font-medium">
-                                  {String(extractedTerms.renewal_period_days)} days
-                                </span>
-                              </div>
-                            )}
                           </div>
+                          {hasAutoRenewal && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Renewal Period</span>
+                              <span className="font-medium">{renewalPeriodDays} days</span>
+                            </div>
+                          )}
                         </div>
-                      </>
-                    )}
+                      </div>
+                    </>
 
                     {/* MOU Purpose */}
                     {extractedTerms?.mou_purpose && (

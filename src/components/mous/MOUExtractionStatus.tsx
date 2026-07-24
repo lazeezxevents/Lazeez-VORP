@@ -59,7 +59,23 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
   };
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
-  const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
+  const hasAutoRenewal = typeof item.has_auto_renewal === "boolean"
+    ? item.has_auto_renewal
+    : extractedTerms?.has_auto_renewal === true;
+  const renewalPeriodDays = item.renewal_period_days || Number(extractedTerms?.renewal_period_days) || 365;
+
+  const handleAutoRenewalChange = async (enabled: boolean) => {
+    await updateItem.mutateAsync({
+      id: item.id,
+      has_auto_renewal: enabled,
+      ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+      extracted_terms: {
+        ...(extractedTerms || {}),
+        has_auto_renewal: enabled,
+        ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+      },
+    });
+  };
 
   return (
     <>
@@ -278,15 +294,23 @@ export function MOUExtractionStatus({ item, onClose }: MOUExtractionStatusProps)
                     <div className="bg-muted/30 rounded-lg p-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Auto-Renewal Clause</span>
-                        <Badge variant={hasAutoRenewal ? "default" : "outline"}>
-                          {hasAutoRenewal ? "Yes" : "No"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={hasAutoRenewal ? "default" : "outline"}>
+                            {hasAutoRenewal ? "On" : "Off"}
+                          </Badge>
+                          <Switch
+                            checked={hasAutoRenewal}
+                            onCheckedChange={(enabled) => void handleAutoRenewalChange(enabled)}
+                            disabled={updateItem.isPending}
+                            aria-label={`Turn auto-renewal ${hasAutoRenewal ? "off" : "on"} for ${item.document_name}`}
+                          />
+                        </div>
                       </div>
-                      {hasAutoRenewal && extractedTerms?.renewal_period_days && (
+                      {hasAutoRenewal && (
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Renewal Period</span>
                           <span className="text-sm font-medium">
-                            {String(extractedTerms.renewal_period_days)} days
+                            {renewalPeriodDays} days
                           </span>
                         </div>
                       )}

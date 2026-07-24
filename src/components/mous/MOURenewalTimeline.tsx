@@ -135,8 +135,9 @@ export function MOURenewalTimeline({ item, vendorStatus, compact = false }: MOUR
   const inactiveStatuses = ["left", "terminated", "blacklisted"];
   const vendorActive = !vendorStatus || !inactiveStatuses.includes(vendorStatus);
 
-  const hasAutoRenewal = item.has_auto_renewal || 
-    (item.extracted_terms as Record<string, unknown>)?.has_auto_renewal === true;
+  const hasAutoRenewal = typeof item.has_auto_renewal === "boolean"
+    ? item.has_auto_renewal
+    : (item.extracted_terms as Record<string, unknown>)?.has_auto_renewal === true;
   
   const renewalDays = item.renewal_period_days || 
     Number((item.extracted_terms as Record<string, unknown>)?.renewal_period_days) || 90;

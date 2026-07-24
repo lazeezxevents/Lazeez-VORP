@@ -20,6 +20,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MOUVaultItem, useDeleteVaultItem, useTriggerExtraction, useTerminateMOU } from "@/hooks/useMOUVault";
+import { MOUVaultItem, useDeleteVaultItem, useTriggerExtraction, useTerminateMOU, useUpdateVaultItem } from "@/hooks/useMOUVault";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -58,10 +59,14 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
   const deleteItem = useDeleteVaultItem();
   const triggerExtraction = useTriggerExtraction();
   const terminateMOU = useTerminateMOU();
+  const updateItem = useUpdateVaultItem();
   const [showDaughters, setShowDaughters] = useState(false);
 
   const extractedTerms = item.extracted_terms as Record<string, unknown> | null;
-  const hasAutoRenewal = extractedTerms?.has_auto_renewal || item.has_auto_renewal;
+  const hasAutoRenewal = typeof item.has_auto_renewal === "boolean"
+    ? item.has_auto_renewal
+    : extractedTerms?.has_auto_renewal === true;
+  const renewalPeriodDays = item.renewal_period_days || Number(extractedTerms?.renewal_period_days) || 365;
   // Branch info stored in extracted_terms since DB columns may not exist yet
   const branchParentId = extractedTerms?._branch_parent_id as string | null || item.parent_vault_id || null;
   const versionNum = (extractedTerms?._branch_version as number) || item.version_number || (branchParentId ? 2 : 1);
@@ -131,6 +136,21 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
       vendorId: item.vendor_id,
     });
     setTerminateOpen(false);
+  };
+
+  const handleAutoRenewalChange = async (enabled: boolean) => {
+    const nextTerms = {
+      ...(extractedTerms || {}),
+      has_auto_renewal: enabled,
+      ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+    };
+
+    await updateItem.mutateAsync({
+      id: item.id,
+      has_auto_renewal: enabled,
+      ...(enabled ? { renewal_period_days: renewalPeriodDays } : {}),
+      extracted_terms: nextTerms,
+    });
   };
 
   const expirationStatus = getExpirationStatus();
@@ -218,6 +238,24 @@ export function MOUVaultCard({ item, daughters = [], showVendor = true, vendorSt
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <RefreshCw className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Auto-renewal</p>
+                <p className="text-xs text-muted-foreground">
+                  {hasAutoRenewal ? `On — renews every ${renewalPeriodDays} days` : "Off — renewal requires manual action"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={hasAutoRenewal}
+              onCheckedChange={(enabled) => void handleAutoRenewalChange(enabled)}
+              disabled={updateItem.isPending}
+              aria-label={`Turn auto-renewal ${hasAutoRenewal ? "off" : "on"} for ${item.document_name}`}
+            />
           </div>
 
           {/* Extraction Status */}
