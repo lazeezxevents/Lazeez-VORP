@@ -30,6 +30,7 @@ import {
 import { useCreateIssue, useUpdateIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { useVendors } from "@/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -69,6 +70,7 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
   const createIssue = useCreateIssue();
   const updateIssue = useUpdateIssue();
   const { data: vendors } = useVendors();
+  const { user, profile } = useAuth();
   const { data: employees = [] } = useQuery({
     queryKey: ["issue-assignees"],
     queryFn: async () => {
@@ -86,6 +88,7 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
     },
   });
   const isEditing = !!issue;
+  const assignedBy = issue?.reporter?.full_name || issue?.reporter?.email || profile?.full_name || user?.email || "Current user";
 
   const form = useForm<IssueFormData>({
     resolver: zodResolver(issueSchema),
@@ -255,7 +258,7 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                 name="project_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link project</FormLabel>
+                    <FormLabel>Select project</FormLabel>
                     <Select onValueChange={(value) => { field.onChange(value); form.setValue("project_task_id", "none"); }} value={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
@@ -277,7 +280,7 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                 name="project_task_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link project task</FormLabel>
+                    <FormLabel>Project task (optional)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} disabled={selectedProjectId === "none"}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder={selectedProjectId === "none" ? "Choose a project first" : "Select project task"} /></SelectTrigger>
@@ -293,6 +296,13 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                   </FormItem>
                 )}
               />
+
+              <FormItem>
+                <FormLabel>Assigned by</FormLabel>
+                <FormControl>
+                  <Input value={assignedBy} readOnly className="bg-muted/50 text-muted-foreground" />
+                </FormControl>
+              </FormItem>
 
               {isEditing && (
                 <FormField
