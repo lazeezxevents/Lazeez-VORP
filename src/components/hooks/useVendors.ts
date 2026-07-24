@@ -179,13 +179,13 @@ export function useVendorStats(vendorId: string) {
 
       if (issuesError) throw issuesError;
 
-      // Get MOUs count
-      const { data: mous, error: mousError } = await supabase
-        .from("mous")
-        .select("id, status, created_at, end_date")
+      // Get MOU Vault documents count
+      const { data: mouVault, error: mouVaultError } = await supabase
+        .from("mou_vault")
+        .select("id, extraction_status, effective_end_date, created_at")
         .eq("vendor_id", vendorId);
 
-      if (mousError) throw mousError;
+      if (mouVaultError) throw mouVaultError;
 
       // Get assignments
       const { data: assignments, error: assignmentsError } = await supabase
@@ -214,14 +214,22 @@ export function useVendorStats(vendorId: string) {
 
       const resolutionRate = totalIssues > 0 ? (resolvedIssues / totalIssues) : 1;
 
+      // Calculate MOU stats from vault
+      const now = new Date();
+      const totalMous = mouVault?.length || 0;
+      const activeMous = mouVault?.filter(m => {
+        if (!m.effective_end_date) return true;
+        return new Date(m.effective_end_date) > now;
+      }).length || 0;
+
       return {
         totalIssues,
         openIssues,
         resolvedIssues,
         criticalIssues,
         avgResolutionTime: Math.round(avgResolutionTime * 10) / 10,
-        totalMous: mous?.length || 0,
-        activeMous: mous?.filter(m => m.status === "signed" || m.status === "approved").length || 0,
+        totalMous,
+        activeMous,
         assignedEmployees: assignments?.length || 0,
         resolutionRate: Math.round(resolutionRate * 100),
       };

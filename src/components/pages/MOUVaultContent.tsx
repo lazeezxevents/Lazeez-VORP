@@ -228,10 +228,9 @@ export default function MOUVaultContent() {
           {filteredItems.length > 0 ? (
             <div className="space-y-6">
               {(() => {
-                // Helper: get branch parent id from item (DB column or extracted_terms metadata)
+                // Helper: get branch parent id from database column
                 const getBranchParentId = (item: MOUVaultItem) => {
-                  const terms = item.extracted_terms as Record<string, unknown> | null;
-                  return (terms?._branch_parent_id as string | null) || item.parent_vault_id || null;
+                  return item.parent_vault_id || null;
                 };
 
                 // Build a map: parentId -> daughter items
