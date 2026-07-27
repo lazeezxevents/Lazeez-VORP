@@ -78,57 +78,61 @@ export default function Analytics() {
       title: "Total Vendors",
       value: vendorStats.data?.totalVendors || 0,
       subtitle: `${vendorStats.data?.activeVendors || 0} active`,
-      icon: Building2,
-      color: "from-blue-500 to-blue-600"
+      icon: Building2
     },
     {
       title: "Total Issues",
       value: issueStats.data?.totalIssues || 0,
       subtitle: `${issueStats.data?.openIssues || 0} open`,
-      icon: Ticket,
-      color: "from-amber-500 to-amber-600"
+      icon: Ticket
     },
     {
       title: "Avg Resolution",
       value: `${(issueStats.data?.avgResolutionTime || 0).toFixed(1)}h`,
       subtitle: "average time",
-      icon: Clock,
-      color: "from-purple-500 to-purple-600"
+      icon: Clock
     },
     {
       title: "Active MOUs",
       value: mouStats.data?.activeMous || 0,
       subtitle: `${mouStats.data?.totalMous || 0} total`,
-      icon: FileText,
-      color: "from-emerald-500 to-emerald-600"
+      icon: FileText
     },
     {
       title: "Top SAFI Score",
       value: topSafiVendor?.score || 0,
       subtitle: topSafiVendor?.vendorName || "N/A",
-      icon: TrendingUp,
-      color: "from-cyan-500 to-cyan-600"
+      icon: TrendingUp
     },
     {
       title: "Pending Vendors",
       value: vendorStats.data?.pendingVendors || 0,
       subtitle: "awaiting approval",
-      icon: Users,
-      color: "from-orange-500 to-orange-600"
+      icon: Users
     },
     {
       title: "Expired MOUs",
       value: mouStats.data?.expiredMous || 0,
       subtitle: "need renewal",
-      icon: Calendar,
-      color: "from-rose-500 to-rose-600"
+      icon: Calendar
     },
     {
       title: "In Progress Issues",
       value: issueStats.data?.inProgressIssues || 0,
       subtitle: "actively worked on",
-      icon: Activity,
-      color: "from-indigo-500 to-indigo-600"
+      icon: Activity
+    },
+    {
+      title: "Resolved Issues",
+      value: issueStats.data?.resolvedIssues || 0,
+      subtitle: "successfully closed",
+      icon: CheckCircle2
+    },
+    {
+      title: "Avg Vendor Rating",
+      value: (vendorStats.data?.avgRating || 0).toFixed(1),
+      subtitle: "out of 5.0 stars",
+      icon: Star
     },
   ];
 
@@ -152,8 +156,8 @@ export default function Analytics() {
   return (
     <DashboardLayout title="Analytics" subtitle="Performance metrics and insights">
       <div className="space-y-6 animate-fade-in">
-        {/* Stats Grid - Now 8 cards in 4 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats Grid - Now 10 cards with red monochrome icons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {stats.map((stat, index) => (
             <Card key={stat.title} style={{ animationDelay: `${index * 50}ms` }}>
               <CardContent className="p-6">
@@ -163,7 +167,7 @@ export default function Analytics() {
                     <p className="text-3xl font-bold mt-2 text-foreground">{stat.value}</p>
                     <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                  <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center shadow-lg">
                     <stat.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
