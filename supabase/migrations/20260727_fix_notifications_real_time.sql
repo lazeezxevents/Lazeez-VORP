@@ -139,6 +139,15 @@ RETURNS TRIGGER AS $$
 DECLARE
   project_name TEXT;
 BEGIN
+  -- Only notify on INSERT or when assigned_to changes
+  IF (TG_OP = 'INSERT' AND NEW.assigned_to IS NULL) THEN
+    RETURN NEW;
+  END IF;
+  
+  IF (TG_OP = 'UPDATE' AND OLD.assigned_to IS NOT DISTINCT FROM NEW.assigned_to) THEN
+    RETURN NEW;
+  END IF;
+  
   IF NEW.assigned_to IS NOT NULL THEN
     SELECT name INTO project_name FROM projects WHERE id = NEW.project_id;
     
@@ -175,7 +184,6 @@ DROP TRIGGER IF EXISTS task_assigned_notification ON project_tasks;
 CREATE TRIGGER task_assigned_notification
 AFTER INSERT OR UPDATE ON project_tasks
 FOR EACH ROW
-WHEN (NEW.assigned_to IS NOT NULL AND (TG_OP = 'INSERT' OR OLD.assigned_to IS DISTINCT FROM NEW.assigned_to))
 EXECUTE FUNCTION notify_task_assigned();
 
 -- ============================================================================

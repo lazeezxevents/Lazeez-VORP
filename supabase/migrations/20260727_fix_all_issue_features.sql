@@ -184,6 +184,7 @@ CREATE POLICY "Users can update own uploads"
 -- PART 6: Add project_tasks table if it doesn't exist (for drag-drop)
 -- ============================================================================
 
+-- Create table only if it doesn't exist
 CREATE TABLE IF NOT EXISTS project_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -198,6 +199,17 @@ CREATE TABLE IF NOT EXISTS project_tasks (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Add position column if table already exists but column doesn't
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'project_tasks' AND column_name = 'position'
+  ) THEN
+    ALTER TABLE project_tasks ADD COLUMN position INTEGER DEFAULT 0;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON project_tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_tasks_assigned_to ON project_tasks(assigned_to);

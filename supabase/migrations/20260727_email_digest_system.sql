@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS digest_email_log (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_digest_email_log_user_id ON digest_email_log(user_id);
-CREATE INDEX idx_digest_email_log_sent_at ON digest_email_log(sent_at DESC);
-CREATE INDEX idx_digest_email_log_status ON digest_email_log(status);
+CREATE INDEX IF NOT EXISTS idx_digest_email_log_user_id ON digest_email_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_digest_email_log_sent_at ON digest_email_log(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_digest_email_log_status ON digest_email_log(status);
 
 GRANT SELECT, INSERT ON digest_email_log TO authenticated;
 
