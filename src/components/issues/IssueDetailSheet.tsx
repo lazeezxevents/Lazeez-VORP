@@ -31,6 +31,8 @@ import {
 import { Issue, IssuePriority, IssueStatus, useUpdateIssue, useDeleteIssue } from "@/hooks/useIssues";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { FileUploadSection } from "./FileUploadSection";
+import { WatchersSection } from "./WatchersSection";
+import { TimeTrackingSection } from "./TimeTrackingSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
@@ -311,16 +313,8 @@ export function IssueDetailSheet({
                     )}
                   </div>
 
-                  {/* Watchers (placeholder) */}
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5" />
-                      Watchers
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Watcher management coming soon
-                    </p>
-                  </div>
+                  {/* Watchers */}
+                  <WatchersSection issueId={issue.id} />
                 </motion.div>
               </TabsContent>
 
@@ -336,16 +330,7 @@ export function IssueDetailSheet({
 
               {/* Time Logs Tab */}
               <TabsContent value="time">
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-center py-10 text-muted-foreground"
-                >
-                  <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">Time tracking coming soon</p>
-                  <p className="text-xs">Log hours and track time spent on this issue.</p>
-                </motion.div>
+                <TimeTrackingSection issueId={issue.id} />
               </TabsContent>
             </Tabs>
           </div>

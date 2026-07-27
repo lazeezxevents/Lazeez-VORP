@@ -16,6 +16,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useIssueAttachments, useUploadAttachment, useDeleteAttachment, IssueAttachment } from "@/hooks/useIssueEnhancements";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -88,76 +94,116 @@ interface FileCardProps {
 function FileCard({ attachment, canDelete, onDelete, isDeleting }: FileCardProps) {
   const Icon = getFileIcon(attachment.file_type);
   const showImage = isImage(attachment.file_type);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-      className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
-    >
-      {/* Thumbnail / Icon */}
-      <div className="w-10 h-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-        {showImage ? (
-          <img
-            src={attachment.file_url}
-            alt={attachment.file_name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        ) : (
-          <Icon className="w-5 h-5 text-muted-foreground" />
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {attachment.file_name}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {formatBytes(attachment.file_size)} ·{" "}
-          {format(new Date(attachment.created_at), "MMM d, yyyy")}
-          {attachment.uploader?.full_name
-            ? ` · ${attachment.uploader.full_name}`
-            : ""}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          asChild
-          aria-label={`Download ${attachment.file_name}`}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
+      >
+        {/* Thumbnail / Icon */}
+        <div
+          className={`w-10 h-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center ${
+            showImage ? "cursor-pointer" : ""
+          }`}
+          onClick={() => showImage && setPreviewOpen(true)}
         >
-          <a href={attachment.file_url} download={attachment.file_name} target="_blank" rel="noreferrer">
-            <Download className="w-3.5 h-3.5" />
-          </a>
-        </Button>
-        {canDelete && (
+          {showImage ? (
+            <img
+              src={attachment.file_url}
+              alt={attachment.file_name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <Icon className="w-5 h-5 text-muted-foreground" />
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
+            {attachment.file_name}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {formatBytes(attachment.file_size)} ·{" "}
+            {format(new Date(attachment.created_at), "MMM d, yyyy")}
+            {attachment.uploader?.full_name
+              ? ` · ${attachment.uploader.full_name}`
+              : ""}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => onDelete(attachment)}
-            disabled={isDeleting}
-            aria-label={`Delete ${attachment.file_name}`}
+            className="h-7 w-7"
+            asChild
+            aria-label={`Download ${attachment.file_name}`}
           >
-            {isDeleting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="w-3.5 h-3.5" />
-            )}
+            <a href={attachment.file_url} download={attachment.file_name} target="_blank" rel="noreferrer">
+              <Download className="w-3.5 h-3.5" />
+            </a>
           </Button>
-        )}
-      </div>
-    </motion.div>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => onDelete(attachment)}
+              disabled={isDeleting}
+              aria-label={`Delete ${attachment.file_name}`}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Image Preview Dialog */}
+      {showImage && (
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>{attachment.file_name}</DialogTitle>
+            </DialogHeader>
+            <div className="relative w-full max-h-[70vh] overflow-auto">
+              <img
+                src={attachment.file_url}
+                alt={attachment.file_name}
+                className="w-full h-auto rounded-lg"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" asChild>
+                <a
+                  href={attachment.file_url}
+                  download={attachment.file_name}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </a>
+              </Button>
+              <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 
