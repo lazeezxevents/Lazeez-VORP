@@ -190,10 +190,20 @@ export default function Issues() {
                   Review workload, focus attention where it is needed, and update progress without leaving the board.
                 </p>
               </div>
-              <Button className="gap-2 sm:self-start lg:self-auto" onClick={() => { setEditingIssue(null); setFormOpen(true); }}>
-                <Plus className="w-4 h-4" />
-                Create issue
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => navigate("/issue-archive")}>
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={() => navigate("/issue-book")}>
+                  <BookOpen className="w-4 h-4" />
+                  Issue Book
+                </Button>
+                <Button className="gap-2" onClick={() => { setEditingIssue(null); setFormOpen(true); }}>
+                  <Plus className="w-4 h-4" />
+                  Create issue
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -552,62 +562,6 @@ export default function Issues() {
             </CardContent>
           </Card>
         )}
-      </div>
-
-      {/* Floating Action Buttons - Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
-        {/* Issue Archive Button */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Button
-            size="lg"
-            className="h-14 px-6 rounded-full shadow-lg hover:shadow-xl transition-all gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white hover:scale-105 group"
-            onClick={() => navigate("/issue-archive")}
-          >
-            <motion.div
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Archive className="w-5 h-5" />
-            </motion.div>
-            <span className="font-semibold">Archive</span>
-            <motion.div
-              className="w-2 h-2 rounded-full bg-white"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </Button>
-        </motion.div>
-
-        {/* Issue Book Button */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Button
-            size="lg"
-            className="h-14 px-6 rounded-full shadow-lg hover:shadow-xl transition-all gap-2 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white hover:scale-105 group"
-            onClick={() => navigate("/issue-book")}
-          >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <BookOpen className="w-5 h-5" />
-            </motion.div>
-            <span className="font-semibold">Issue Book</span>
-            <motion.div
-              className="text-xs bg-white/20 px-2 py-0.5 rounded-full"
-              whileHover={{ scale: 1.1 }}
-            >
-              Analytics
-            </motion.div>
-          </Button>
-        </motion.div>
       </div>
 
       <IssueForm
