@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,13 @@ export function MOUVaultUpload({ open, onOpenChange, preselectedVendorId }: MOUV
   const { data: existingVendorMOUs } = useMOUVaultByVendor(vendorId);
   const uploadToVault = useUploadToVault();
   const triggerExtraction = useTriggerExtraction();
+
+  // Update vendorId when preselectedVendorId changes or dialog opens
+  useEffect(() => {
+    if (open && preselectedVendorId) {
+      setVendorId(preselectedVendorId);
+    }
+  }, [open, preselectedVendorId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];

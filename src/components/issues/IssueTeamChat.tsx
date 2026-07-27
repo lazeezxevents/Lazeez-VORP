@@ -178,13 +178,25 @@ function MessageBubble({
             : "bg-muted/60 border border-border text-foreground rounded-tl-sm"
         )}>
           <span className="whitespace-pre-wrap">
-            {msg.content.split(/(@cs-agent)/gi).map((part, i) =>
-              /^@cs-agent$/i.test(part) ? (
-                <span key={i} className={cn("font-semibold", isOwn ? "text-primary-foreground/80" : "text-primary")}>{part}</span>
-              ) : (
-                part
-              )
-            )}
+            {msg.content.split(/(@cs-agent|@@[a-zA-Z0-9_-]+)/gi).map((part, i) => {
+              // @cs-agent with red background
+              if (/^@cs-agent$/i.test(part)) {
+                return (
+                  <span key={i} className={cn("font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded", isOwn ? "bg-primary-foreground/20 text-primary-foreground" : "")}>
+                    {part}
+                  </span>
+                );
+              }
+              // @@mention display as single @ with red background
+              if (/^@@[a-zA-Z0-9_-]+$/i.test(part)) {
+                return (
+                  <span key={i} className={cn("font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded", isOwn ? "bg-primary-foreground/20 text-primary-foreground" : "")}>
+                    {part.slice(1)}
+                  </span>
+                );
+              }
+              return part;
+            })}
           </span>
         </div>
       </div>
@@ -202,7 +214,7 @@ interface IssueTeamChatProps {
 
 export function IssueTeamChat({ issue }: IssueTeamChatProps) {
   const { user } = useAuth();
-  const { data: persistedMessages, isLoading } = useIssueChatMessages(issue.id);
+  const { data: persistedMessages, isLoading, error } = useIssueChatMessages(issue.id);
   const sendMessage = useSendChatMessage(issue.id);
 
   const [input, setInput] = useState("");
@@ -219,6 +231,14 @@ export function IssueTeamChat({ issue }: IssueTeamChatProps) {
     ...(persistedMessages ?? []),
     ...(thinkingMsg ? [thinkingMsg] : []),
   ];
+
+  // Debug logging
+  useEffect(() => {
+    if (error) {
+      console.error("IssueTeamChat error:", error);
+      toast.error("Failed to load chat messages. Please check that the issue_chat_messages table exists.");
+    }
+  }, [error]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -337,7 +357,25 @@ export function IssueTeamChat({ issue }: IssueTeamChatProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {isLoading ? (
+        {error ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+            className="h-full flex flex-col items-center justify-center text-center gap-3 text-muted-foreground py-8"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Failed to load chat</p>
+              <p className="text-xs mt-1 max-w-xs leading-relaxed">
+                Please ensure the database migration for <code className="text-[10px] bg-muted px-1 py-0.5 rounded">issue_chat_messages</code> table has been applied.
+              </p>
+              <p className="text-xs mt-2 text-muted-foreground/70">
+                Error: {error instanceof Error ? error.message : String(error)}
+              </p>
+            </div>
+          </motion.div>
+        ) : isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex gap-3">

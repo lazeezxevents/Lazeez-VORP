@@ -232,14 +232,6 @@ export default function VendorDetail() {
   // Calculate KPI stats
   const resolvedIssues = issues?.filter(i => i.status === "resolved" || i.status === "closed") || [];
 
-  // Debug: Log all MOUs
-  console.log('All MOUs for vendor:', mous?.map(m => ({ 
-    title: m.title, 
-    status: m.status, 
-    start_date: m.start_date, 
-    end_date: m.end_date 
-  })));
-
   // Compute average resolution time in days from resolved issues that have resolved_at set
   const avgResolutionTime = (() => {
     const timedIssues = resolvedIssues.filter(
@@ -259,21 +251,20 @@ export default function VendorDetail() {
     resolvedIssues: resolvedIssues.length,
     criticalIssues: issues?.filter(i => i.priority === "critical").length || 0,
     avgResolutionTime,
-    totalMous: mous?.length || 0,
-    // Active MOUs: signed or approved, and not expired by date
-    activeMous: mous?.filter(m => {
-      const isActiveStatus = m.status === "signed" || m.status === "approved";
-      // Compare dates only (not time) - MOU is active if end_date is today or future
-      const isNotExpiredByDate = !m.end_date || (
-        new Date(m.end_date).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0)
+    // Use vaultItems (actual MOUs in MOU Vault) instead of mous table
+    totalMous: vaultItems?.length || 0,
+    // Active MOUs: completed extraction, within date range
+    activeMous: vaultItems?.filter(item => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const hasCompletedExtraction = item.extraction_status === "completed";
+      const isActiveByStartDate = !item.effective_start_date || new Date(item.effective_start_date) <= today;
+      const isNotExpiredByEndDate = !item.effective_end_date || (
+        new Date(item.effective_end_date).setHours(0, 0, 0, 0) >= today.getTime()
       );
       
-      // Debug log (remove after testing)
-      if (m.status === "signed" || m.status === "approved") {
-        console.log('MOU:', m.title, 'Status:', m.status, 'End date:', m.end_date, 'isNotExpired:', isNotExpiredByDate);
-      }
-      
-      return isActiveStatus && isNotExpiredByDate;
+      return hasCompletedExtraction && isActiveByStartDate && isNotExpiredByEndDate;
     }).length || 0,
     assignedEmployees: assignments?.length || 0,
     resolutionRate: issues?.length

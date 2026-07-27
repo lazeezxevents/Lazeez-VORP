@@ -92,23 +92,50 @@ export function useAnalytics() {
   const mouStats = useQuery({
     queryKey: ["analytics", "mous"],
     queryFn: async () => {
-      const { data: mous, error } = await supabase
-        .from("mous")
-        .select("id, status, created_at, start_date, end_date");
+      // Use mou_vault table (the actual source of truth for MOUs)
+      const { data: vaultItems, error } = await supabase
+        .from("mou_vault")
+        .select("id, extraction_status, effective_start_date, effective_end_date, created_at");
       
       if (error) throw error;
       
-      const totalMous = mous?.length || 0;
-      const activeMous = mous?.filter(m => m.status === "signed" || m.status === "approved").length || 0;
-      const expiredMous = mous?.filter(m => m.status === "expired").length || 0;
-      const pendingMous = mous?.filter(m => m.status === "draft" || m.status === "pending_review").length || 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const totalMous = vaultItems?.length || 0;
+      
+      // Active MOUs: completed extraction, within date range
+      const activeMous = vaultItems?.filter(item => {
+        const hasCompletedExtraction = item.extraction_status === "completed";
+        const isActiveByStartDate = !item.effective_start_date || new Date(item.effective_start_date) <= today;
+        const isNotExpiredByEndDate = !item.effective_end_date || (
+          new Date(item.effective_end_date).setHours(0, 0, 0, 0) >= today.getTime()
+        );
+        return hasCompletedExtraction && isActiveByStartDate && isNotExpiredByEndDate;
+      }).length || 0;
+      
+      // Expired MOUs: completed extraction but past end date
+      const expiredMous = vaultItems?.filter(item => {
+        const hasCompletedExtraction = item.extraction_status === "completed";
+        const isPastEndDate = item.effective_end_date && (
+          new Date(item.effective_end_date).setHours(0, 0, 0, 0) < today.getTime()
+        );
+        return hasCompletedExtraction && isPastEndDate;
+      }).length || 0;
+      
+      // Pending MOUs: extraction in progress or failed
+      const pendingMous = vaultItems?.filter(item => 
+        item.extraction_status === "pending" || 
+        item.extraction_status === "processing" ||
+        item.extraction_status === "failed"
+      ).length || 0;
       
       return {
         totalMous,
         activeMous,
         expiredMous,
         pendingMous,
-        mous: mous || []
+        mous: vaultItems || []
       };
     }
   });

@@ -98,20 +98,35 @@ export function useNotifications() {
 
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc("mark_all_notifications_read");
-      if (error) throw error;
+    mutationFn: async (ids?: string[]) => {
+      if (ids && ids.length > 0) {
+        // Mark specific notifications as read
+        const { error } = await supabase
+          .from("notifications")
+          .update({ read: true })
+          .in("id", ids)
+          .eq("user_id", user?.id);
+        if (error) throw error;
+      } else {
+        // Mark all notifications as read
+        const { error } = await supabase.rpc("mark_all_notifications_read");
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
-      toast.success("All notifications marked as read");
     },
   });
 
-  // Archive notification mutation
+  // Archive notification mutation (single or bulk)
   const archiveNotificationMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc("archive_notification", { notification_id: id });
+    mutationFn: async (ids: string | string[]) => {
+      const idArray = Array.isArray(ids) ? ids : [ids];
+      const { error } = await supabase
+        .from("notifications")
+        .update({ archived: true })
+        .in("id", idArray)
+        .eq("user_id", user?.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -121,13 +136,23 @@ export function useNotifications() {
 
   // Archive all notifications mutation
   const archiveAllMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc("archive_all_notifications");
-      if (error) throw error;
+    mutationFn: async (ids?: string[]) => {
+      if (ids && ids.length > 0) {
+        // Archive specific notifications
+        const { error } = await supabase
+          .from("notifications")
+          .update({ archived: true })
+          .in("id", ids)
+          .eq("user_id", user?.id);
+        if (error) throw error;
+      } else {
+        // Archive all notifications
+        const { error } = await supabase.rpc("archive_all_notifications");
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
-      toast.success("All notifications archived");
     },
   });
 
@@ -136,36 +161,36 @@ export function useNotifications() {
     markAsReadMutation.mutate(id);
   }, [markAsReadMutation]);
 
-  const handleMarkAllAsRead = useCallback((ids: string[]) => {
-    markAllAsReadMutation.mutate();
+  const handleMarkAllAsRead = useCallback((ids?: string[]) => {
+    markAllAsReadMutation.mutate(ids);
   }, [markAllAsReadMutation]);
 
   const handleDelete = useCallback((id: string) => {
     archiveNotificationMutation.mutate(id);
   }, [archiveNotificationMutation]);
 
-  const handleDeleteAll = useCallback((ids: string[]) => {
-    archiveAllMutation.mutate();
+  const handleDeleteAll = useCallback((ids?: string[]) => {
+    archiveAllMutation.mutate(ids);
   }, [archiveAllMutation]);
 
-  const handleMarkCategoryAsRead = useCallback(async (category: string) => {
-    const categoryNotifs = notifications.filter(n => n.category === category && !n.read);
-    for (const notif of categoryNotifs) {
-      await markAsReadMutation.mutateAsync(notif.id);
-    }
-    toast.success(`All ${category} notifications marked as read`);
-  }, [notifications, markAsReadMutation]);
+  const handleMarkCategoryAsRead = useCallback(async (category: string, allNotifications: Notification[]) => {
+    const categoryNotifs = allNotifications.filter(n => n.category === category && !n.read);
+    if (categoryNotifs.length === 0) return;
+    
+    const ids = categoryNotifs.map(n => n.id);
+    await markAllAsReadMutation.mutateAsync(ids);
+  }, [markAllAsReadMutation]);
 
-  const handleArchiveCategory = useCallback(async (category: string) => {
-    const categoryNotifs = notifications.filter(n => n.category === category);
-    for (const notif of categoryNotifs) {
-      await archiveNotificationMutation.mutateAsync(notif.id);
-    }
-    toast.success(`All ${category} notifications archived`);
-  }, [notifications, archiveNotificationMutation]);
+  const handleArchiveCategory = useCallback(async (category: string, allNotifications: Notification[]) => {
+    const categoryNotifs = allNotifications.filter(n => n.category === category);
+    if (categoryNotifs.length === 0) return;
+    
+    const ids = categoryNotifs.map(n => n.id);
+    await archiveAllMutation.mutateAsync(ids);
+  }, [archiveAllMutation]);
 
-  const handleExportCategory = useCallback((category: string) => {
-    const categoryNotifications = notifications.filter(n => n.category === category);
+  const handleExportCategory = useCallback((category: string, allNotifications: Notification[]) => {
+    const categoryNotifications = allNotifications.filter(n => n.category === category);
     const dataStr = JSON.stringify(categoryNotifications, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -174,10 +199,10 @@ export function useNotifications() {
     link.download = `notifications-${category}-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-  }, [notifications]);
+  }, []);
 
-  const handleExportAll = useCallback(() => {
-    const dataStr = JSON.stringify(notifications, null, 2);
+  const handleExportAll = useCallback((allNotifications: Notification[]) => {
+    const dataStr = JSON.stringify(allNotifications, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -185,9 +210,9 @@ export function useNotifications() {
     link.download = `all-notifications-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-  }, [notifications]);
+  }, []);
 
-  const handleArchiveOld = useCallback(async () => {
+  const handleArchiveOld = useCallback(async (allNotifications: Notification[]) => {
     const { data, error } = await supabase.rpc("archive_old_notifications");
     if (error) {
       toast.error("Failed to archive old notifications");
@@ -288,7 +313,12 @@ export function useNotifications() {
             description: newNotif.message ? String(newNotif.message) : undefined,
             action: newNotif.action_url ? {
               label: "View",
-              onClick: () => navigate(String(newNotif.action_url))
+              onClick: () => {
+                // Mark as read when clicking
+                markAsReadMutation.mutate(newNotif.id);
+                // Navigate to the action URL
+                navigate(String(newNotif.action_url));
+              }
             } : undefined
           });
         }

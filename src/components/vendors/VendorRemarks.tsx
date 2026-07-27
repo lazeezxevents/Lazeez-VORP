@@ -185,7 +185,25 @@ export function VendorRemarks({ vendorId }: VendorRemarksProps) {
                           </div>
                         </div>
                         <p className="text-sm text-foreground whitespace-pre-wrap">
-                          {remark.remark}
+                          {remark.remark.split(/(@cs-agent|@@[a-zA-Z0-9_-]+)/gi).map((part, i) => {
+                            // If it's @cs-agent, style it with red background
+                            if (/^@cs-agent$/i.test(part)) {
+                              return (
+                                <span key={i} className="font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded">
+                                  {part}
+                                </span>
+                              );
+                            }
+                            // If it's @@mention, display as single @ with red background
+                            if (/^@@[a-zA-Z0-9_-]+$/i.test(part)) {
+                              return (
+                                <span key={i} className="font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded">
+                                  {part.slice(1)}
+                                </span>
+                              );
+                            }
+                            return part;
+                          })}
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
                           {format(new Date(remark.created_at), "MMM d, yyyy 'at' h:mm a")}

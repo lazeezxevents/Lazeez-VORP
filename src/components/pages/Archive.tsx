@@ -272,9 +272,14 @@ export default function Archive() {
                             {categoryLabels[notification.category]}
                           </Badge>
                         </div>
-                        <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                          {format(new Date(notification.original_created_at), "MMM d, yyyy")}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap block">
+                            Created: {format(new Date(notification.original_created_at), "MMM d, yyyy")}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground/70 whitespace-nowrap block">
+                            Archived: {formatDistanceToNow(new Date(notification.archived_at), { addSuffix: true })}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                         {notification.message}
