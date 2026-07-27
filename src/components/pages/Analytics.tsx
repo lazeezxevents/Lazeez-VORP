@@ -134,6 +134,18 @@ export default function Analytics() {
       subtitle: "out of 5.0 stars",
       icon: Star
     },
+    {
+      title: "Total MOUs",
+      value: mouStats.data?.totalMous || 0,
+      subtitle: `${mouStats.data?.activeMous || 0} active, ${mouStats.data?.expiredMous || 0} expired`,
+      icon: FileText
+    },
+    {
+      title: "Critical Issues",
+      value: priorityData.filter(p => p.name === 'Critical').reduce((sum, p) => sum + p.value, 0),
+      subtitle: "high priority attention",
+      icon: AlertTriangle
+    },
   ];
 
   if (isLoading) {
@@ -156,19 +168,19 @@ export default function Analytics() {
   return (
     <DashboardLayout title="Analytics" subtitle="Performance metrics and insights">
       <div className="space-y-6 animate-fade-in">
-        {/* Stats Grid - Now 10 cards with red monochrome icons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Stats Grid - Now 12 cards with red monochrome icons in 6 columns */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {stats.map((stat, index) => (
             <Card key={stat.title} style={{ animationDelay: `${index * 50}ms` }}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-bold mt-2 text-foreground">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center shadow-lg">
+                    <stat.icon className="w-5 h-5 text-white" />
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center shadow-lg">
-                    <stat.icon className="w-6 h-6 text-white" />
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">{stat.title}</p>
+                    <p className="text-2xl font-bold mt-1 text-foreground">{stat.value}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{stat.subtitle}</p>
                   </div>
                 </div>
               </CardContent>

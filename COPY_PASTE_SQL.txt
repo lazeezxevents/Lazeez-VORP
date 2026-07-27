@@ -1,0 +1,414 @@
+-- COMPLETE ISSUE ENHANCEMENTS - CLEAN REBUILD
+-- This migration creates ALL issue enhancement tables from scratch
+
+-- SECTION 1: DROP OLD TABLES (Clean slate)
+
+DROP TABLE IF EXISTS issue_timers CASCADE;
+DROP TABLE IF EXISTS issue_label_relations CASCADE;
+DROP TABLE IF EXISTS issue_labels CASCADE;
+DROP TABLE IF EXISTS issue_time_logs CASCADE;
+DROP TABLE IF EXISTS issue_attachments CASCADE;
+DROP TABLE IF EXISTS issue_chat_messages CASCADE;
+DROP TABLE IF EXISTS issue_watchers CASCADE;
+DROP TABLE IF EXISTS issue_activity CASCADE;
+
+-- SECTION 2: CREATE TABLES
+
+-- 2.1 Issue Activity (Remarks/Comments/History)
+CREATE TABLE issue_activity (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  action_type TEXT NOT NULL CHECK (action_type IN (
+    'comment', 'status_change', 'priority_change', 'assignment',
+    'created', 'label_added', 'label_removed', 'watcher_added',
+    'watcher_removed', 'attachment_added', 'attachment_removed', 'time_logged'
+  )),
+  old_value TEXT,
+  new_value TEXT,
+  comment_text TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_activity_issue ON issue_activity(issue_id);
+CREATE INDEX idx_issue_activity_user ON issue_activity(user_id);
+CREATE INDEX idx_issue_activity_created ON issue_activity(created_at DESC);
+CREATE INDEX idx_issue_activity_action ON issue_activity(action_type);
+
+-- 2.2 Issue Watchers
+CREATE TABLE issue_watchers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  added_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(issue_id, user_id)
+);
+
+CREATE INDEX idx_issue_watchers_issue ON issue_watchers(issue_id);
+CREATE INDEX idx_issue_watchers_user ON issue_watchers(user_id);
+
+-- 2.3 Issue Chat Messages (Team Chat)
+CREATE TABLE issue_chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  is_ai BOOLEAN NOT NULL DEFAULT false,
+  ai_agent_name TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_chat_issue ON issue_chat_messages(issue_id);
+CREATE INDEX idx_issue_chat_created ON issue_chat_messages(created_at ASC);
+
+-- 2.4 Issue Attachments
+CREATE TABLE issue_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  file_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+  file_size BIGINT NOT NULL DEFAULT 0,
+  uploaded_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_attachments_issue ON issue_attachments(issue_id);
+CREATE INDEX idx_issue_attachments_uploader ON issue_attachments(uploaded_by);
+
+-- 2.5 Issue Time Logs
+CREATE TABLE issue_time_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  hours NUMERIC(10, 2) NOT NULL CHECK (hours > 0),
+  description TEXT,
+  logged_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_time_logs_issue ON issue_time_logs(issue_id);
+CREATE INDEX idx_issue_time_logs_user ON issue_time_logs(user_id);
+CREATE INDEX idx_issue_time_logs_date ON issue_time_logs(logged_date DESC);
+
+-- 2.6 Issue Labels
+CREATE TABLE issue_labels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#6366f1',
+  description TEXT,
+  created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_labels_name ON issue_labels(name);
+
+-- 2.7 Issue Label Relations
+CREATE TABLE issue_label_relations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  label_id UUID NOT NULL REFERENCES issue_labels(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(issue_id, label_id)
+);
+
+CREATE INDEX idx_issue_label_relations_issue ON issue_label_relations(issue_id);
+CREATE INDEX idx_issue_label_relations_label ON issue_label_relations(label_id);
+
+-- 2.8 Issue Timers (Auto-timer system)
+CREATE TABLE issue_timers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  stopped_at TIMESTAMPTZ,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_issue_timers_issue ON issue_timers(issue_id);
+CREATE INDEX idx_issue_timers_user ON issue_timers(user_id);
+CREATE INDEX idx_issue_timers_active ON issue_timers(is_active) WHERE is_active = true;
+
+-- SECTION 3: ROW LEVEL SECURITY (RLS)
+
+-- 3.1 Issue Activity
+ALTER TABLE issue_activity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view activity"
+  ON issue_activity FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can add activity"
+  ON issue_activity FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own activity"
+  ON issue_activity FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- 3.2 Issue Watchers
+ALTER TABLE issue_watchers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view watchers"
+  ON issue_watchers FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can add watchers"
+  ON issue_watchers FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated users can remove watchers"
+  ON issue_watchers FOR DELETE
+  USING (auth.uid() IS NOT NULL);
+
+-- 3.3 Issue Chat Messages
+ALTER TABLE issue_chat_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view chat"
+  ON issue_chat_messages FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can send messages"
+  ON issue_chat_messages FOR INSERT
+  WITH CHECK (auth.uid() = user_id OR is_ai = true);
+
+-- 3.4 Issue Attachments
+ALTER TABLE issue_attachments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view attachments"
+  ON issue_attachments FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can upload attachments"
+  ON issue_attachments FOR INSERT
+  WITH CHECK (auth.uid() = uploaded_by);
+
+CREATE POLICY "Users can delete own attachments"
+  ON issue_attachments FOR DELETE
+  USING (auth.uid() = uploaded_by);
+
+-- 3.5 Issue Time Logs
+ALTER TABLE issue_time_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view time logs"
+  ON issue_time_logs FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can add time logs"
+  ON issue_time_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own time logs"
+  ON issue_time_logs FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own time logs"
+  ON issue_time_logs FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- 3.6 Issue Labels
+ALTER TABLE issue_labels ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view labels"
+  ON issue_labels FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can manage labels"
+  ON issue_labels FOR ALL
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- 3.7 Issue Label Relations
+ALTER TABLE issue_label_relations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view label relations"
+  ON issue_label_relations FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can manage label relations"
+  ON issue_label_relations FOR ALL
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- 3.8 Issue Timers
+ALTER TABLE issue_timers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can manage timers"
+  ON issue_timers FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- SECTION 4: STORAGE BUCKET FOR ATTACHMENTS
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'issue-attachments',
+  'issue-attachments',
+  true,
+  52428800,
+  ARRAY[
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain', 'text/csv',
+    'application/zip', 'application/x-zip-compressed'
+  ]
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 52428800,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- Storage Policies
+DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated upload" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated delete" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated update" ON storage.objects;
+
+CREATE POLICY "Public read access"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'issue-attachments');
+
+CREATE POLICY "Authenticated upload"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'issue-attachments' 
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "Authenticated delete"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'issue-attachments' 
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "Authenticated update"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'issue-attachments' 
+    AND auth.uid() IS NOT NULL
+  );
+
+-- SECTION 5: AUTO-TIMER TRIGGERS
+
+-- Start timer when issue goes to in_progress
+CREATE OR REPLACE FUNCTION fn_start_issue_timer()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'in_progress' 
+     AND OLD.status IS DISTINCT FROM 'in_progress' 
+     AND NEW.assigned_to IS NOT NULL THEN
+    
+    UPDATE issue_timers 
+    SET is_active = false, stopped_at = now()
+    WHERE issue_id = NEW.id AND is_active = true;
+
+    INSERT INTO issue_timers (issue_id, user_id, started_at, is_active)
+    VALUES (NEW.id, NEW.assigned_to, now(), true);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Stop timer and log time when issue is resolved/closed
+CREATE OR REPLACE FUNCTION fn_stop_issue_timer()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_timer RECORD;
+  v_hours NUMERIC;
+BEGIN
+  IF NEW.status IN ('resolved', 'closed') 
+     AND OLD.status NOT IN ('resolved', 'closed') THEN
+    
+    FOR v_timer IN
+      SELECT * FROM issue_timers 
+      WHERE issue_id = NEW.id AND is_active = true
+    LOOP
+      v_hours := ROUND(
+        EXTRACT(EPOCH FROM (now() - v_timer.started_at)) / 3600.0, 
+        2
+      );
+      
+      IF v_hours >= 0.02 THEN
+        INSERT INTO issue_time_logs (
+          issue_id, user_id, hours, description, logged_date
+        ) VALUES (
+          NEW.id, 
+          v_timer.user_id, 
+          v_hours, 
+          'Auto-logged (timer stopped on resolve)', 
+          CURRENT_DATE
+        );
+      END IF;
+      
+      UPDATE issue_timers 
+      SET is_active = false, stopped_at = now()
+      WHERE id = v_timer.id;
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Attach triggers
+DROP TRIGGER IF EXISTS trg_start_issue_timer ON issues;
+CREATE TRIGGER trg_start_issue_timer
+  AFTER UPDATE ON issues
+  FOR EACH ROW
+  WHEN (NEW.status IS DISTINCT FROM OLD.status)
+  EXECUTE FUNCTION fn_start_issue_timer();
+
+DROP TRIGGER IF EXISTS trg_stop_issue_timer ON issues;
+CREATE TRIGGER trg_stop_issue_timer
+  BEFORE UPDATE ON issues
+  FOR EACH ROW
+  WHEN (NEW.status IS DISTINCT FROM OLD.status)
+  EXECUTE FUNCTION fn_stop_issue_timer();
+
+-- SECTION 6: ENABLE REAL-TIME FOR ALL TABLES
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_activity;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_activity;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_watchers;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_watchers;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_chat_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_chat_messages;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_attachments;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_attachments;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_time_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_time_logs;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_labels;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_labels;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_label_relations;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_label_relations;
+
+ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS issue_timers;
+ALTER PUBLICATION supabase_realtime ADD TABLE issue_timers;
+
+-- SECTION 7: INSERT DEFAULT LABELS
+
+INSERT INTO issue_labels (name, color, description, created_by)
+SELECT 'Bug', '#ef4444', 'Software bug or defect', id
+FROM auth.users LIMIT 1
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO issue_labels (name, color, description, created_by)
+SELECT 'Enhancement', '#3b82f6', 'Feature enhancement', id
+FROM auth.users LIMIT 1
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO issue_labels (name, color, description, created_by)
+SELECT 'Urgent', '#f59e0b', 'Requires immediate attention', id
+FROM auth.users LIMIT 1
+ON CONFLICT (name) DO NOTHING;
+
+-- DONE - All issue enhancement features are now ready!
