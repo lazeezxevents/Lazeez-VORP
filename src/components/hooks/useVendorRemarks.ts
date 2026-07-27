@@ -10,6 +10,7 @@ export interface VendorRemark {
   remark_type: string | null;
   created_by: string | null;
   created_by_name?: string | null;
+  created_by_avatar?: string | null;
   created_at: string;
 }
 
@@ -27,22 +28,26 @@ export function useVendorRemarks(vendorId: string) {
 
       // Fetch creator names
       const creatorIds = [...new Set(data.map(r => r.created_by).filter(Boolean))];
-      let profiles: Record<string, string> = {};
+      let profiles: Record<string, { name: string; avatar: string | null }> = {};
       
       if (creatorIds.length > 0) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, email")
+          .select("id, full_name, email, avatar_url")
           .in("id", creatorIds);
         
         profileData?.forEach(p => {
-          profiles[p.id] = p.full_name || p.email;
+          profiles[p.id] = {
+            name: p.full_name || p.email,
+            avatar: p.avatar_url || null
+          };
         });
       }
 
       return data.map(remark => ({
         ...remark,
-        created_by_name: remark.created_by ? profiles[remark.created_by] || null : null,
+        created_by_name: remark.created_by ? profiles[remark.created_by]?.name || null : null,
+        created_by_avatar: remark.created_by ? profiles[remark.created_by]?.avatar || null : null,
       })) as VendorRemark[];
     },
     enabled: !!vendorId,

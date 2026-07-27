@@ -186,7 +186,7 @@ Miscellaneous
 Signatures
 
 For Lazeez Events:
-Signature: ______________________
+Signature: _____Syed Raza A. Abidi_____
 Name: Syed Raza Abbas Abidi
 Designation: Co-lead and Sales Executive
 Date: _____{{SIGNATURE_DATE}}__________

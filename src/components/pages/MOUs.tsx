@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMOUs } from "@/components/hooks/useMOUs";
 import { useMOUVault } from "@/hooks/useMOUVault";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { MOUCreationWizard } from "@/components/mous/wizard/MOUCreationWizard";
 import MOUVaultContent from "@/components/pages/MOUVaultContent";
 import { MOUVersionHistory } from "@/components/mous/MOUVersionHistory";
@@ -65,7 +66,29 @@ export default function MOUs() {
     }
   };
 
-  const handleExportPDF = (mou: typeof mous[0]) => {
+  const handleExportPDF = async (mou: typeof mous[0]) => {
+    // Check if there's a vault document for this MOU
+    const vaultDoc = vaultItems.find(item => item.mou_id === mou.id);
+    
+    if (vaultDoc && vaultDoc.document_url) {
+      // Download the exact document from the vault
+      try {
+        const { data, error } = await supabase.storage
+          .from("mou-vault")
+          .createSignedUrl(vaultDoc.document_url, 60);
+
+        if (error) throw error;
+        
+        // Open the document in a new tab for download
+        window.open(data.signedUrl, "_blank");
+        return;
+      } catch (error) {
+        console.error("Failed to download vault document:", error);
+        // Fall back to generating PDF if vault download fails
+      }
+    }
+    
+    // Fallback: Generate PDF if no vault document exists
     generateMOUPDF({
       title: mou.title,
       vendor: mou.vendor as { name: string } | null,
@@ -231,7 +254,7 @@ export default function MOUs() {
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleExportPDF(mou)}>
                                 <Download className="w-4 h-4 mr-2" />
-                                Export PDF
+                                Download MOU
                               </DropdownMenuItem>
                               {isStaff && (
                                 <>
