@@ -509,6 +509,47 @@ export default function Analytics() {
             </Card>
           </div>
         </div>
+
+        {/* Business Insights - Full Width */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Insights</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Total Vendors</p>
+                <p className="text-2xl font-bold text-foreground">57</p>
+                <p className="text-sm text-muted-foreground mt-1">Registered vendors</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Total Orders</p>
+                <p className="text-2xl font-bold text-foreground">1,248</p>
+                <p className="text-sm text-muted-foreground mt-1">Orders processed</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold text-foreground">PKR 2.4M</p>
+                <p className="text-sm text-muted-foreground mt-1">Revenue generated</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Pending Vendor Approvals</p>
+                <p className="text-2xl font-bold text-foreground">8</p>
+                <p className="text-sm text-muted-foreground mt-1">Awaiting verification</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Vendor Retention</p>
+                <p className="text-2xl font-bold text-foreground">91%</p>
+                <p className="text-sm text-muted-foreground mt-1">Active within last 30 days</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">Commission Earned</p>
+                <p className="text-2xl font-bold text-foreground">PKR 312,000</p>
+                <p className="text-sm text-muted-foreground mt-1">Platform earnings</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
