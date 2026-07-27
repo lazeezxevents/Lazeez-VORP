@@ -37,40 +37,62 @@ SET
 -- ============================================================================
 -- Storage Policies for Issue Attachments
 -- ============================================================================
+-- NOTE: Storage policies require elevated permissions and should be created
+-- via the Supabase Dashboard or using the Service Role key.
+-- 
+-- To create these policies manually:
+-- 1. Go to Supabase Dashboard → Storage → Policies
+-- 2. Select the "issue-attachments" bucket
+-- 3. Create the following policies:
+--
+-- Policy 1: Allow authenticated users to upload
+--   Name: "Authenticated users can upload issue attachments"
+--   Operation: INSERT
+--   Target roles: authenticated
+--   USING expression: bucket_id = 'issue-attachments'
+--
+-- Policy 2: Allow authenticated users to read
+--   Name: "Authenticated users can read issue attachments"
+--   Operation: SELECT
+--   Target roles: authenticated
+--   USING expression: bucket_id = 'issue-attachments'
+--
+-- Policy 3: Allow users to delete their own
+--   Name: "Users can delete their own issue attachments"
+--   Operation: DELETE
+--   Target roles: authenticated
+--   USING expression: bucket_id = 'issue-attachments'
+--
+-- Alternatively, run this via SQL Editor with elevated permissions:
+/*
+BEGIN;
 
--- Allow authenticated users to upload to their issue folders
+-- Drop existing policies if any
 DROP POLICY IF EXISTS "Authenticated users can upload issue attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can read issue attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own issue attachments" ON storage.objects;
+
+-- Create upload policy
 CREATE POLICY "Authenticated users can upload issue attachments"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (
-    bucket_id = 'issue-attachments' AND
-    auth.role() = 'authenticated'
-);
+WITH CHECK (bucket_id = 'issue-attachments');
 
--- Allow authenticated users to read all issue attachments
-DROP POLICY IF EXISTS "Authenticated users can read issue attachments" ON storage.objects;
+-- Create read policy
 CREATE POLICY "Authenticated users can read issue attachments"
 ON storage.objects FOR SELECT
 TO authenticated
 USING (bucket_id = 'issue-attachments');
 
--- Allow users to delete their own attachments
--- (We check uploaded_by in the application layer, but this provides bucket-level protection)
-DROP POLICY IF EXISTS "Users can delete their own issue attachments" ON storage.objects;
+-- Create delete policy
 CREATE POLICY "Users can delete their own issue attachments"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (
-    bucket_id = 'issue-attachments' AND
-    auth.role() = 'authenticated'
-);
+USING (bucket_id = 'issue-attachments');
 
-COMMENT ON POLICY "Authenticated users can upload issue attachments" ON storage.objects IS 
-'Allows authenticated users to upload files to issue-specific folders';
+COMMIT;
+*/
 
-COMMENT ON POLICY "Authenticated users can read issue attachments" ON storage.objects IS 
-'Allows all authenticated users to view issue attachments';
-
-COMMENT ON POLICY "Users can delete their own issue attachments" ON storage.objects IS 
-'Allows users to delete attachments (app-level check ensures they own it)';
+-- For now, we'll just ensure the bucket exists
+-- The policies should be created via Dashboard or with elevated permissions
+SELECT 'Storage bucket "issue-attachments" created. Please add storage policies via Dashboard.' as message;
