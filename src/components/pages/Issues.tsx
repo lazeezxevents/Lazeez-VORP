@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
@@ -21,6 +22,8 @@ import {
   TimerReset,
   FolderKanban,
   GripVertical,
+  BookOpen,
+  Archive,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -80,6 +83,7 @@ const statusLabels: Record<IssueStatus, string> = {
 const kanbanColumns: IssueStatus[] = ["open", "in_progress", "resolved", "closed"];
 
 export default function Issues() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -547,6 +551,19 @@ export default function Issues() {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* Floating Issue Book Button - Bottom Right */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <Button
+          size="lg"
+          className="h-14 px-6 rounded-full shadow-lg hover:shadow-xl transition-all gap-2 bg-gradient-to-r from-primary to-purple-600 hover:scale-105"
+          onClick={() => navigate("/issue-book")}
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="font-semibold">Issue Book</span>
+          <Archive className="w-4 h-4 ml-1" />
+        </Button>
       </div>
 
       <IssueForm
