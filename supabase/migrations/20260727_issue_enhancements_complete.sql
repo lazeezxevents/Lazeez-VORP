@@ -102,23 +102,25 @@ ALTER TABLE issue_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issue_label_relations ENABLE ROW LEVEL SECURITY;
 
 -- Issue Activity Policies
+DROP POLICY IF EXISTS "Anyone can view issue activity" ON issue_activity;
+DROP POLICY IF EXISTS "Authenticated users can add issue activity" ON issue_activity;
 CREATE POLICY "Anyone can view issue activity"
   ON issue_activity FOR SELECT
   USING (true);
-
 CREATE POLICY "Authenticated users can add issue activity"
   ON issue_activity FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Issue Attachments Policies
+DROP POLICY IF EXISTS "Anyone can view issue attachments" ON issue_attachments;
+DROP POLICY IF EXISTS "Authenticated users can upload attachments" ON issue_attachments;
+DROP POLICY IF EXISTS "Users can delete their own attachments or admins can delete any" ON issue_attachments;
 CREATE POLICY "Anyone can view issue attachments"
   ON issue_attachments FOR SELECT
   USING (true);
-
 CREATE POLICY "Authenticated users can upload attachments"
   ON issue_attachments FOR INSERT
   WITH CHECK (auth.uid() = uploaded_by);
-
 CREATE POLICY "Users can delete their own attachments or admins can delete any"
   ON issue_attachments FOR DELETE
   USING (
@@ -127,40 +129,43 @@ CREATE POLICY "Users can delete their own attachments or admins can delete any"
   );
 
 -- Issue Watchers Policies
+DROP POLICY IF EXISTS "Anyone can view issue watchers" ON issue_watchers;
+DROP POLICY IF EXISTS "Authenticated users can add watchers" ON issue_watchers;
+DROP POLICY IF EXISTS "Users can remove themselves or added_by can remove" ON issue_watchers;
 CREATE POLICY "Anyone can view issue watchers"
   ON issue_watchers FOR SELECT
   USING (true);
-
 CREATE POLICY "Authenticated users can add watchers"
   ON issue_watchers FOR INSERT
   WITH CHECK (auth.uid() = added_by);
-
 CREATE POLICY "Users can remove themselves or added_by can remove"
   ON issue_watchers FOR DELETE
   USING (auth.uid() = user_id OR auth.uid() = added_by);
 
 -- Issue Time Logs Policies
+DROP POLICY IF EXISTS "Anyone can view issue time logs" ON issue_time_logs;
+DROP POLICY IF EXISTS "Authenticated users can log time" ON issue_time_logs;
+DROP POLICY IF EXISTS "Users can update their own time logs" ON issue_time_logs;
+DROP POLICY IF EXISTS "Users can delete their own time logs" ON issue_time_logs;
 CREATE POLICY "Anyone can view issue time logs"
   ON issue_time_logs FOR SELECT
   USING (true);
-
 CREATE POLICY "Authenticated users can log time"
   ON issue_time_logs FOR INSERT
   WITH CHECK (auth.uid() = user_id);
-
 CREATE POLICY "Users can update their own time logs"
   ON issue_time_logs FOR UPDATE
   USING (auth.uid() = user_id);
-
 CREATE POLICY "Users can delete their own time logs"
   ON issue_time_logs FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Issue Labels Policies
+DROP POLICY IF EXISTS "Anyone can view issue labels" ON issue_labels;
+DROP POLICY IF EXISTS "Admins and staff can create labels" ON issue_labels;
 CREATE POLICY "Anyone can view issue labels"
   ON issue_labels FOR SELECT
   USING (true);
-
 CREATE POLICY "Admins and staff can create labels"
   ON issue_labels FOR INSERT
   WITH CHECK (
@@ -172,17 +177,18 @@ CREATE POLICY "Admins and staff can create labels"
   );
 
 -- Issue Label Relations Policies
+DROP POLICY IF EXISTS "Anyone can view issue label relations" ON issue_label_relations;
+DROP POLICY IF EXISTS "Authenticated users can add label relations" ON issue_label_relations;
+DROP POLICY IF EXISTS "Authenticated users can remove label relations" ON issue_label_relations;
 CREATE POLICY "Anyone can view issue label relations"
   ON issue_label_relations FOR SELECT
   USING (true);
-
 CREATE POLICY "Authenticated users can add label relations"
   ON issue_label_relations FOR INSERT
-  WITH CHECK (auth.role = 'authenticated');
-
+  WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can remove label relations"
   ON issue_label_relations FOR DELETE
-  USING (auth.role = 'authenticated');
+  USING (auth.role() = 'authenticated');
 
 -- ============================================================================
 -- PART 4: STORAGE BUCKET FOR ATTACHMENTS
@@ -192,6 +198,11 @@ CREATE POLICY "Authenticated users can remove label relations"
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('issue-attachments', 'issue-attachments', true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policy: Drop existing policies first to avoid conflicts on re-run
+DROP POLICY IF EXISTS "Anyone can view issue attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload issue attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own attachments" ON storage.objects;
 
 -- Storage Policy: Anyone can view
 CREATE POLICY "Anyone can view issue attachments"
@@ -203,7 +214,7 @@ CREATE POLICY "Authenticated users can upload issue attachments"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'issue-attachments' AND
-    auth.role = 'authenticated'
+    auth.role() = 'authenticated'
   );
 
 -- Storage Policy: Users can delete their own files or admins can delete any
