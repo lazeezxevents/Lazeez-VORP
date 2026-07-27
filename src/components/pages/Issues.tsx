@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useIssues, useUpdateIssue, useDeleteIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { IssueForm } from "@/components/issues/IssueForm";
-import { IssueDetailPanel } from "@/components/issues/IssueDetailPanel";
+import { IssueDetailPanelSimple } from "@/components/issues/IssueDetailPanelSimple";
 import { IssueAIPanel } from "@/components/issues/IssueAIPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -570,8 +570,8 @@ export default function Issues() {
         issue={editingIssue}
       />
 
-      {/* Animated centered detail panel — replaces the old side sheet */}
-      <IssueDetailPanel
+      {/* Animated centered detail panel — simplified without broken features */}
+      <IssueDetailPanelSimple
         issue={selectedIssue}
         open={!!selectedIssue}
         onClose={() => setSelectedIssue(null)}
