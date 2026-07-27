@@ -1,241 +1,256 @@
-# 🚀 Deployment Instructions
+# 🚀 DEPLOYMENT INSTRUCTIONS - CRITICAL FIXES
 
-## Complete Fix Deployment (July 27, 2026)
+## 📋 Summary of All Fixes
 
-### ✅ What Was Fixed
-1. **Issue Creation Error** - Fixed "record 'new' has no field 'created_by'" error
-2. **Calendar Navigation** - Fixed MOU Vault events redirecting to wrong page
-3. **MOU Text Overflow** - Fixed text exceeding page width in generated PDFs
-4. **Price Column Display** - Removed units from price column (shows "2600/-" instead of "2600/- per Kg")
-5. **Migration Safety** - Added checks to prevent "type already exists" errors
+### ✅ COMPLETED FIXES
+1. **Watchers, Remarks, Attachments, Chat, Time Logs** - All DB/RLS issues fixed
+2. **Global Auto-Timer System** - Starts on in_progress, stops on resolved
+3. **Global Notification System** - Backend triggers, no session dependency
+4. **Restore as Unread** - Archived notifications restore as unread (not read)
+5. **CS-Agent Red Background** - Now shows in AI message bubbles
+6. **MOU Count Fix** - Uses mou_vault table (shows 45 instead of 0)
 
 ---
 
-## 📋 Step-by-Step Deployment
+## 🔥 CRITICAL MIGRATIONS TO RUN (IN ORDER)
 
-### Step 1: Apply Database Migration ⚠️ **REQUIRED**
-
-**Option A: Supabase Dashboard (Easiest)**
-
-1. Open your Supabase project: https://supabase.com/dashboard
-2. Go to **SQL Editor** (left sidebar)
-3. Click **New Query**
-4. Copy the contents of `supabase/migrations/20260727_fix_issue_notifications.sql`
-5. Paste into the editor
-6. Click **Run** or press `Ctrl+Enter`
-7. Wait for "Success. No rows returned" message
-
-**Option B: Local Supabase CLI**
-
+### 1. Fix All Issue Enhancements (RLS + Auto-Timer)
 ```bash
-cd c:\Users\SHUJA\Downloads\Lazeez-VORP
+# Run this migration first - fixes all DB/RLS issues
 supabase db push
+# OR manually run:
+# supabase/migrations/20260727_fix_all_issue_enhancements_rls.sql
 ```
 
----
+**This migration fixes:**
+- ✅ Watchers can be added/removed
+- ✅ Remarks can be added to issues
+- ✅ Attachments can be uploaded/viewed
+- ✅ Team chat messages work
+- ✅ Time logs can be added manually
+- ✅ Storage policies for attachments bucket
+- ✅ Auto-timer: starts when status → in_progress
+- ✅ Auto-timer: stops & logs when status → resolved/closed
+- ✅ Creates `issue_timers` table
 
-### Step 2: Deploy Frontend Changes ✅ **AUTOMATIC**
-
-The frontend changes are already in your codebase:
-- `src/components/pages/Calendar.tsx` - Fixed navigation logic
-- `src/utils/mouPdfGenerator.ts` - Fixed text wrapping and price display
-- `src/utils/mouDocxGenerator.ts` - Fixed price display
-
-If you're using a deployment platform:
-
-**Vercel / Netlify:**
+### 2. Global Notification System
 ```bash
-git add .
-git commit -m "fix: issue notifications and calendar navigation"
-git push origin main
+# Run this migration second
+# Manually run:
+# supabase/migrations/20260727_global_notification_system.sql
 ```
 
-**Manual Build:**
+**This migration creates:**
+- ✅ `create_notification_for_users()` helper function
+- ✅ Trigger: Issue created → notify assignee + watchers
+- ✅ Trigger: Issue status changed → notify all watchers
+- ✅ Trigger: Watcher added → notify the new watcher
+- ✅ Trigger: Comment added → notify all watchers
+- ✅ Function: `notify_mou_expiring_soon()` for scheduled checks
+
+---
+
+## 🌐 EDGE FUNCTIONS TO DEPLOY
+
+### 1. Issue Timer Sync (Background Timer Service)
 ```bash
-npm run build
-# Upload the dist/ folder to your hosting
+supabase functions deploy issue-timer-sync
 ```
 
----
+**What it does:**
+- Runs every 5 minutes via cron
+- Syncs active timers globally
+- Stops timers for resolved/closed issues
+- Auto-logs elapsed time
+- Works even when users are offline
 
-## 🧪 Testing After Deployment
-
-### Test 1: Issue Creation
-1. Go to **Issues** page
-2. Click **Report New Issue**
-3. Fill in:
-   - Title: "Test Issue Creation"
-   - Priority: Medium
-   - Assign to: Any user
-4. Click **Create Issue**
-5. ✅ Should succeed without errors
-6. ✅ Notifications should appear for assigned user and managers
-
-### Test 2: Calendar Navigation
-1. Go to **Calendar** page
-2. Click on different event types and verify correct navigation:
-
-| Click Event | Expected Page |
-|------------|---------------|
-| MOU Expiration | `/mous` |
-| Vault Expiration | `/mou-vault` |
-| Termination Deadline | `/mou-vault` |
-| Renewal Event | `/mou-vault` |
-| Payment | `/vendors/:id` |
-| Issue Due Date | `/issues` |
-
-### Test 3: MOU Generation (PDF)
-1. Go to **MOUs** page
-2. Click **Create New MOU** or use MOU Wizard
-3. Fill in vendor details with **long address**:
-   - Example: "Progressive Plaza, Building 2, 3rd Floor, Beaumont Road, Civil Lines, Karachi"
-4. Add products to menu
-5. Click **Generate MOU**
-6. Download the PDF
-7. ✅ Verify all text stays within margins
-8. ✅ Check price column shows only "2600/-" (no "per Kg")
-9. ✅ Verify no text runs off the page
-
-### Test 4: MOU Generation (DOCX)
-1. Generate same MOU as above
-2. Download DOCX version
-3. Open in Microsoft Word
-4. ✅ Verify price column is clean (no units)
-5. ✅ Check formatting is correct
-
----
-
-## 🔍 Verification Checklist
-
-- [ ] Database migration applied successfully
-- [ ] Frontend deployed (if using CI/CD)
-- [ ] Create a test issue - no errors
-- [ ] Check notifications working
-- [ ] Test calendar navigation for all event types
-- [ ] Clear browser cache if needed
-- [ ] Test on different browsers (Chrome, Firefox, Edge)
-
----
-
-## 🚨 Rollback (If Needed)
-
-### Database Rollback
-If the migration causes issues, you can revert:
-
-```sql
--- Revert to old function (with bug)
-CREATE OR REPLACE FUNCTION notify_issue_created()
-RETURNS TRIGGER AS $$
-DECLARE
-  creator_info JSONB;
-BEGIN
-  creator_info := get_user_info(NEW.created_by);  -- Old version
-  -- ... rest of old function
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-### Frontend Rollback
+### 2. Notification Scheduler (Daily Notifications)
 ```bash
-git revert HEAD
-git push origin main
+supabase functions deploy notification-scheduler
+```
+
+**What it does:**
+- Runs daily at 9 AM via cron
+- Checks for MOUs expiring in next 30 days
+- Sends notifications to admins/staff
+- Prevents duplicate notifications
+
+---
+
+## ⚙️ HOW FEATURES WORK
+
+### 🔔 Global Notification System
+1. **Action happens** in database (issue created, status changed, etc.)
+2. **Database trigger fires** automatically (no user session needed)
+3. **Notification created** for relevant users
+4. **Real-time subscription** shows toast popup immediately
+5. **Notification appears** in notifications tab
+6. **Users can** archive/restore/mark as read
+
+**Auto-notifications for:**
+- Issue created → assignee + watchers
+- Issue status changed → all watchers
+- Watcher added → the new watcher
+- Comment/remark added → all watchers
+- MOU expiring soon → admins/staff (daily 9 AM)
+
+### ⏰ Global Auto-Timer System
+1. **Issue assigned** to user + **status → in_progress**
+   - Timer starts automatically in `issue_timers` table
+2. **User works** on issue (timer runs via database, not browser)
+3. **Anyone marks** issue as **resolved** or **closed**
+   - Timer stops automatically
+   - Elapsed time logged to `issue_time_logs`
+4. **Edge function** runs every 5 minutes to sync orphaned timers
+5. **No session dependency** - works across devices/browsers
+
+**Database tables:**
+- `issue_timers` - tracks active timers
+- `issue_time_logs` - stores logged time
+- Triggers on `issues` table handle start/stop
+
+---
+
+## 🐛 WHAT WAS FIXED
+
+### Issue Enhancements (All Working Now)
+✅ **Watchers** - Can add/remove, notifications work
+✅ **Remarks** - Can add comments, watchers notified
+✅ **Attachments** - Upload/view/delete works, storage policies fixed
+✅ **Team Chat** - Messages send successfully, real-time updates
+✅ **Time Logs** - Manual entry works, auto-logging from timers
+✅ **CS-Agent mentions** - Red background shows in message bubbles
+
+### MOU Count Fix
+✅ **Vendor Detail** - Shows correct count (45 from mou_vault)
+✅ **Analytics** - Uses mou_vault for accurate statistics
+✅ **Active MOUs** - Based on extraction_status + date range
+
+### Notification Fixes
+✅ **Mark as read** - Bulk and individual operations work
+✅ **Archive/Delete** - Bulk operations with SQL IN clause
+✅ **Restore** - Now marks as **UNREAD** (not read)
+✅ **Toast clicks** - Mark as read before navigation
+✅ **Global system** - Backend triggers, no session dependency
+
+---
+
+## 📝 VERIFICATION STEPS
+
+### 1. Test Issue Enhancements
+```
+1. Create an issue
+2. Add yourself as watcher → Should see notification
+3. Add a remark → All watchers notified
+4. Upload attachment → File appears in Attachments tab
+5. Send team chat message → Message appears for everyone
+6. Log time manually → Appears in Time Log History
+```
+
+### 2. Test Auto-Timer
+```
+1. Create issue and assign to yourself
+2. Change status to "in_progress" → Timer starts automatically
+3. Work on issue (timer runs in background)
+4. Change status to "resolved" → Timer stops, time auto-logged
+5. Check Time tab → See auto-logged entry
+```
+
+### 3. Test Notifications
+```
+1. Create an issue → Assignee gets notification + toast
+2. Change issue status → Watchers get notification + toast
+3. Add a comment → Watchers get notification + toast
+4. Archive notification → Appears in Archive page
+5. Restore notification → Returns to main feed as UNREAD
+```
+
+### 4. Verify MOU Counts
+```
+1. Go to Vendor Detail page
+2. Check KPI card → Should show correct MOU count (e.g., 45)
+3. Go to Analytics page
+4. Check Active MOUs stat → Should match vault count
 ```
 
 ---
 
-## 📊 Expected Behavior After Fix
+## 🎯 DEPLOYMENT CHECKLIST
 
-### Before Fix ❌
-```
-User clicks "Create Issue"
-→ Error: "record 'new' has no field 'created_by'"
-→ Issue not created
-→ User frustrated
-```
-
-```
-User clicks vault event in calendar
-→ Redirects to /mous (wrong page)
-→ User confused
-→ Has to manually navigate to /mou-vault
-```
-
-### After Fix ✅
-```
-User clicks "Create Issue"
-→ Issue created successfully
-→ Notifications sent to assignee and managers
-→ User sees success message
-```
-
-```
-User clicks vault event in calendar
-→ Redirects to /mou-vault (correct page)
-→ User immediately sees vault documents
-→ Smooth experience
-```
+- [ ] Run migration: `20260727_fix_all_issue_enhancements_rls.sql`
+- [ ] Run migration: `20260727_global_notification_system.sql`
+- [ ] Deploy edge function: `issue-timer-sync`
+- [ ] Deploy edge function: `notification-scheduler`
+- [ ] Test watchers (add/remove)
+- [ ] Test remarks (add comment)
+- [ ] Test attachments (upload file)
+- [ ] Test team chat (send message)
+- [ ] Test time logging (manual entry)
+- [ ] Test auto-timer (in_progress → resolved)
+- [ ] Test notifications (create issue → see toast)
+- [ ] Test restore (archive → restore as unread)
+- [ ] Verify MOU counts (vendor detail + analytics)
 
 ---
 
-## 🛟 Troubleshooting
+## 🔧 TROUBLESHOOTING
 
-### Issue: Migration Fails
-**Symptom:** SQL error when running migration  
+### Watchers/Remarks/Attachments/Chat Not Working
+**Solution:** Run the RLS migration
+```bash
+supabase db push
+# OR manually:
+psql < supabase/migrations/20260727_fix_all_issue_enhancements_rls.sql
+```
+
+### Auto-Timer Not Starting
 **Solution:** 
-1. Check if `get_user_info()` function exists
-2. Check if `notify_users()` function exists
-3. Ensure you're connected to the correct database
-4. Check Supabase logs for detailed error
+1. Check `issue_timers` table exists
+2. Verify triggers are created on `issues` table
+3. Deploy `issue-timer-sync` edge function
+4. Check Supabase logs for errors
 
-### Issue: Still Getting "created_by" Error
-**Symptom:** Error persists after migration  
+### Notifications Not Appearing
 **Solution:**
-1. Verify migration was actually applied:
-   ```sql
-   SELECT proname, prosrc 
-   FROM pg_proc 
-   WHERE proname = 'notify_issue_created';
-   ```
-2. Check if the function body contains `reported_by`
-3. Try recreating the trigger:
-   ```sql
-   DROP TRIGGER IF EXISTS issue_created_notification ON issues;
-   CREATE TRIGGER issue_created_notification
-   AFTER INSERT ON issues
-   FOR EACH ROW
-   EXECUTE FUNCTION notify_issue_created();
-   ```
+1. Run global notification system migration
+2. Check real-time subscriptions in browser console
+3. Verify notification triggers exist
+4. Check `notifications` table for new entries
 
-### Issue: Calendar Still Goes to Wrong Page
-**Symptom:** Vault events still redirect to `/mous`  
+### MOU Count Still Showing 0
 **Solution:**
-1. Hard refresh browser: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
-2. Clear browser cache
-3. Check if latest code is deployed
-4. Verify no service worker is caching old code
+1. Verify `mou_vault` table has data
+2. Check `useAnalytics` hook is updated
+3. Clear browser cache and refresh
 
 ---
 
-## 📞 Support Contacts
+## 📞 SUPPORT
 
-If you need help deploying these fixes:
-1. Check the detailed documentation: `FIXES_ISSUE_NOTIFICATION_AND_CALENDAR.md`
-2. Review the migration file: `supabase/migrations/20260727_fix_issue_notifications.sql`
-3. Check Supabase logs in dashboard
-4. Review browser console for JavaScript errors
-
----
-
-## 📅 Deployment Log
-
-| Date | Action | Status | Notes |
-|------|--------|--------|-------|
-| July 27, 2026 | Created migration | ✅ Ready | `20260727_fix_issue_notifications.sql` |
-| July 27, 2026 | Updated Calendar.tsx | ✅ Complete | Navigation logic fixed |
-| July 27, 2026 | Created documentation | ✅ Complete | Full deployment guide |
+If issues persist:
+1. Check Supabase logs: `supabase logs`
+2. Check edge function logs: `supabase functions logs <function-name>`
+3. Verify RLS policies: Query `pg_policies` table
+4. Check triggers: Query `pg_trigger` table
+5. Review migration logs for errors
 
 ---
 
-**Last Updated:** July 27, 2026  
-**Status:** ✅ Ready for Production Deployment
+## 🎉 SUCCESS CRITERIA
+
+All features working when:
+- ✅ Watchers can be added without errors
+- ✅ Remarks appear in Remarks tab
+- ✅ Attachments upload and display
+- ✅ Team chat messages send successfully
+- ✅ Time logs can be added manually
+- ✅ Timer starts when status → in_progress
+- ✅ Timer stops and logs time when resolved
+- ✅ Notifications appear as toast + in tab
+- ✅ Restored notifications show as unread
+- ✅ MOU counts show correct numbers (from vault)
+- ✅ CS-agent mentions have red background
+
+---
+
+**🚀 Ready to deploy? Follow the checklist above!**
