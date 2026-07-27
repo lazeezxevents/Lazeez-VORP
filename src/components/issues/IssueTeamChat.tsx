@@ -150,7 +150,27 @@ function MessageBubble({
                 CS Agent is thinking…
               </span>
             ) : (
-              <span className="whitespace-pre-wrap">{msg.content}</span>
+              <span className="whitespace-pre-wrap">
+                {msg.content.split(/(@cs-agent|@@[a-zA-Z0-9_-]+)/gi).map((part, i) => {
+                  // @cs-agent with red background
+                  if (/^@cs-agent$/i.test(part)) {
+                    return (
+                      <span key={i} className="font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded">
+                        {part}
+                      </span>
+                    );
+                  }
+                  // @@mention display as single @ with red background
+                  if (/^@@[a-zA-Z0-9_-]+$/i.test(part)) {
+                    return (
+                      <span key={i} className="font-semibold bg-red-500/10 text-red-600 px-1 py-0.5 rounded">
+                        {part.slice(1)}
+                      </span>
+                    );
+                  }
+                  return part;
+                })}
+              </span>
             )}
           </div>
         </div>
