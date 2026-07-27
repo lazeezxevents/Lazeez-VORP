@@ -232,11 +232,37 @@ CREATE POLICY "Users can delete their own attachments"
 -- PART 5: REAL-TIME SUBSCRIPTIONS
 -- ============================================================================
 
--- Enable real-time for new tables
-ALTER PUBLICATION supabase_realtime ADD TABLE issue_activity;
-ALTER PUBLICATION supabase_realtime ADD TABLE issue_attachments;
-ALTER PUBLICATION supabase_realtime ADD TABLE issue_watchers;
-ALTER PUBLICATION supabase_realtime ADD TABLE issue_time_logs;
+-- Enable real-time for new tables (safe to re-run)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'issue_activity'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE issue_activity;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'issue_attachments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE issue_attachments;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'issue_watchers'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE issue_watchers;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'issue_time_logs'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE issue_time_logs;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- PART 6: TRIGGER FOR AUTO-CREATING "CREATED" ACTIVITY
