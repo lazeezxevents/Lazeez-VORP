@@ -93,59 +93,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. Create pg_cron jobs for sending digests
--- Note: pg_cron must be enabled in Supabase dashboard first
--- These are example schedules; adjust as needed
-
--- Daily digest at 9 AM UTC (adjust for your timezone)
-SELECT cron.schedule(
-  'send-daily-digest',
-  '0 9 * * *', -- Every day at 9 AM
-  $$
-  SELECT
-    net.http_post(
-      url := (SELECT current_setting('app.supabase_url') || '/functions/v1/send-digest-email'),
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.supabase_service_role_key')
-      ),
-      body := jsonb_build_object(
-        'users', (
-          SELECT json_agg(row_to_json(u))
-          FROM get_users_for_digest('daily') u
-        ),
-        'digestType', 'daily'
-      )
-    ) AS request_id;
-  $$
-) WHERE NOT EXISTS (
-  SELECT 1 FROM cron.job WHERE jobname = 'send-daily-digest'
-);
-
--- Weekly digest on Monday at 9 AM UTC
-SELECT cron.schedule(
-  'send-weekly-digest',
-  '0 9 * * 1', -- Every Monday at 9 AM
-  $$
-  SELECT
-    net.http_post(
-      url := (SELECT current_setting('app.supabase_url') || '/functions/v1/send-digest-email'),
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.supabase_service_role_key')
-      ),
-      body := jsonb_build_object(
-        'users', (
-          SELECT json_agg(row_to_json(u))
-          FROM get_users_for_digest('weekly') u
-        ),
-        'digestType', 'weekly'
-      )
-    ) AS request_id;
-  $$
-) WHERE NOT EXISTS (
-  SELECT 1 FROM cron.job WHERE jobname = 'send-weekly-digest'
-);
+-- 4. Automated digest scheduling
+-- Note: Since pg_cron is not available, use external cron service (GitHub Actions, cron-job.org, etc.)
+-- Or set up manual scheduling via Supabase Dashboard
+-- 
+-- To manually trigger digests, call the edge function directly:
+-- curl -X POST https://your-project.supabase.co/functions/v1/send-digest-email \
+--   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY" \
+--   -H "Content-Type: application/json" \
+--   -d '{"digestType": "daily"}'
+--
+-- For automated scheduling, use GitHub Actions workflow (see .github/workflows/email-digest.yml)
+-- or use external cron service pointing to: /functions/v1/send-digest-email
 
 -- 5. Manual trigger function for testing digests
 CREATE OR REPLACE FUNCTION trigger_digest_email_now(

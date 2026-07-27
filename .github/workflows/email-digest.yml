@@ -1,0 +1,44 @@
+name: Send Email Digests
+
+on:
+  schedule:
+    # Daily digest at 9 AM UTC (every day)
+    - cron: '0 9 * * *'
+    # Weekly digest at 9 AM UTC (every Monday)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+    inputs:
+      digestType:
+        description: 'Digest type (daily or weekly)'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine digest type
+        id: digest-type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.digestType }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 9 * * 1" ]; then
+            echo "type=weekly" >> $GITHUB_OUTPUT
+          else
+            echo "type=daily" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send digest email
+        run: |
+          curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/send-digest-email" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"digestType\": \"${{ steps.digest-type.outputs.type }}\"}"
+
+      - name: Log result
+        if: always()
+        run: echo "Digest sent - type ${{ steps.digest-type.outputs.type }}"

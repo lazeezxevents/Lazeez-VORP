@@ -14,7 +14,19 @@ interface DigestData {
 
 serve(async (req) => {
   try {
-    const { users, digestType } = await req.json();
+    let { users, digestType } = await req.json();
+    
+    // If no users provided, fetch them from database
+    if (!users || users.length === 0) {
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+      
+      const { data: usersData, error } = await supabase.rpc('get_users_for_digest', {
+        digest_type: digestType || 'daily'
+      });
+      
+      if (error) throw error;
+      users = usersData || [];
+    }
     
     if (!RESEND_API_KEY) {
       throw new Error("RESEND_API_KEY not configured");
