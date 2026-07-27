@@ -108,15 +108,15 @@ export function useArchivedNotifications() {
     },
   });
 
-  // Restore notification (unarchive and mark as read)
+  // Restore notification (unarchive and mark as UNREAD so user sees it again)
   const restoreMutation = useMutation({
     mutationFn: async (notificationId: string) => {
       if (!user) throw new Error("User not authenticated");
 
-      // First, restore the notification in the main table (unarchive + mark as read)
+      // First, restore the notification in the main table (unarchive + mark as UNREAD)
       const { error: updateError } = await supabase
         .from("notifications")
-        .update({ archived: false, read: true })
+        .update({ archived: false, read: false })
         .eq("id", notificationId)
         .eq("user_id", user.id);
 
@@ -134,7 +134,7 @@ export function useArchivedNotifications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["archived-notifications"] });
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
-      toast.success("Notification restored and marked as read");
+      toast.success("Notification restored as unread");
     },
     onError: (error) => {
       console.error("Failed to restore notification:", error);
