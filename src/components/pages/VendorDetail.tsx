@@ -13,7 +13,7 @@ import {
   FileText, Users, Ticket, Calendar, Download, Eye,
   Edit, Clock, CheckCircle2, DollarSign, TrendingUp,
   MessageSquare, History, BarChart3, Archive, Plus,
-  Trash2, AlertCircle, Loader2, GitBranch, ChevronDown, ChevronUp
+  Trash2, AlertCircle, Loader2, GitBranch, ChevronDown, ChevronUp, Brain
 } from "lucide-react";
 import { useVendor, useDeleteVendor } from "@/hooks/useVendors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +27,9 @@ import { VendorPerformanceChart } from "@/components/vendors/VendorPerformanceCh
 import { VendorTimeline } from "@/components/vendors/VendorTimeline";
 import { VendorKPICard } from "@/components/vendors/VendorKPICard";
 import { VendorRemarks } from "@/components/vendors/VendorRemarks";
-import { VendorExportButton } from "@/components/vendors/VendorExportButton";
+import { VendorAIAgent } from "@/components/vendors/VendorAIAgent";
+import { VendorIssueChat } from "@/components/vendors/VendorIssueChat";
+import { useIssue, Issue as IssueType } from "@/hooks/useIssues";
 import { useMOUVaultByVendor, useUpdateVaultItem } from "@/hooks/useMOUVault";
 import { MOUVaultCard } from "@/components/mous/MOUVaultCard";
 import { MOUVaultUpload } from "@/components/mous/MOUVaultUpload";
@@ -109,6 +111,7 @@ export default function VendorDetail() {
   const [expandedRenewalId, setExpandedRenewalId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string; isImage: boolean; isPdf: boolean } | null>(null);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   const { data: vendor, isLoading: vendorLoading } = useVendor(id || "");
   const { data: vaultItems, isLoading: vaultLoading } = useMOUVaultByVendor(id);
@@ -472,6 +475,14 @@ export default function VendorDetail() {
                     <Edit className="w-4 h-4" />
                     Edit Vendor
                   </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setAgentOpen(true)}
+                  >
+                    <Brain className="w-4 h-4 text-primary" />
+                    MOU Agent
+                  </Button>
                   <VendorExportButton
                     vendor={vendor}
                     stats={{
@@ -709,11 +720,10 @@ export default function VendorDetail() {
                         {[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
                       </div>
                     ) : issues && issues.length > 0 ? (
-                      <ScrollArea className="h-[300px]">
-                        <div className="space-y-3">
-                          {issues.map((issue) => (
+                      <div className="space-y-4">
+                        {issues.map((issue) => (
+                          <div key={issue.id} className="space-y-0">
                             <div
-                              key={issue.id}
                               className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                               onClick={() => navigate("/issues")}
                             >
@@ -733,9 +743,11 @@ export default function VendorDetail() {
                                 </Badge>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
+                            {/* Inline team chat per issue */}
+                            <VendorIssueChat issue={issue as unknown as IssueType} />
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -1065,6 +1077,15 @@ export default function VendorDetail() {
         onOpenChange={setViewerOpen}
         vendorStatus={vendor.status}
       />
+
+      {/* MOU Agent */}
+      {id && (
+        <VendorAIAgent
+          vendorId={id}
+          open={agentOpen}
+          onClose={() => setAgentOpen(false)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

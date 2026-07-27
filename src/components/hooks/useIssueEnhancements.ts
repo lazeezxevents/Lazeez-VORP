@@ -490,3 +490,96 @@ export function useAddTimeLog(issueId: string) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Persistent Issue Chat Messages
+// ---------------------------------------------------------------------------
+
+export interface IssueChatMessage {
+  id: string;
+  issue_id: string;
+  user_id: string;
+  content: string;
+  is_ai: boolean;
+  ai_agent_name: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  user?: {
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+export function useIssueChatMessages(issueId: string) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["issue-chat", issueId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("issue_chat_messages")
+        .select(`*, user:profiles(full_name, email, avatar_url)`)
+        .eq("issue_id", issueId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      return data as unknown as IssueChatMessage[];
+    },
+    enabled: !!issueId,
+  });
+
+  // Real-time: auto-refresh when new messages land
+  useEffect(() => {
+    if (!issueId) return;
+    const channel = supabase
+      .channel(`issue-chat-${issueId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "issue_chat_messages", filter: `issue_id=eq.${issueId}` },
+        () => queryClient.invalidateQueries({ queryKey: ["issue-chat", issueId] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [issueId, queryClient]);
+
+  return query;
+}
+
+export function useSendChatMessage(issueId: string) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      content,
+      isAi = false,
+      aiAgentName,
+    }: {
+      content: string;
+      isAi?: boolean;
+      aiAgentName?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("issue_chat_messages")
+        .insert({
+          issue_id: issueId,
+          user_id: user!.id,
+          content,
+          is_ai: isAi,
+          ai_agent_name: aiAgentName ?? null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["issue-chat", issueId] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send message: ${error.message}`);
+    },
+  });
+}

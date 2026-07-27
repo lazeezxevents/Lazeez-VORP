@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
   Search,
   Plus,
@@ -19,6 +20,7 @@ import {
   ListFilter,
   TimerReset,
   FolderKanban,
+  GripVertical,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -118,6 +120,14 @@ export default function Issues() {
   const handleStatusChange = async (issue: Issue, newStatus: IssueStatus) => {
     await updateIssue.mutateAsync({ id: issue.id, status: newStatus });
   };
+
+  const onDragEnd = useCallback((result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    const newStatus = destination.droppableId as IssueStatus;
+    updateIssue.mutate({ id: draggableId, status: newStatus });
+  }, [updateIssue]);
 
   const handleDelete = async () => {
     if (deleteIssue) {
@@ -272,110 +282,168 @@ export default function Issues() {
 
         {/* Kanban View */}
         {viewMode === "kanban" && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
-            {kanbanColumns.map((status, colIdx) => (
-              <section key={status} className="animate-stagger-fade-in rounded-2xl border border-border bg-muted/30 p-3" style={{ animationDelay: `${colIdx * 100}ms` }}>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <div className="flex items-center gap-2">
-                    <Badge className={statusConfig[status].color}>
-                      {statusLabels[status]}
-                    </Badge>
-                    <span className="text-sm font-medium text-muted-foreground">{getIssuesByStatus(status).length}</span>
-                  </div>
-                  {status === "in_progress" && <TimerReset className="w-4 h-4 text-warning" />}
-                </div>
-                <div className="space-y-3">
-                  {getIssuesByStatus(status).map((issue, issueIdx) => (
-                    <Card
-                      key={issue.id}
-                      className="cursor-pointer animate-stagger-fade-in border-border/80 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                      style={{ animationDelay: `${(colIdx * 100) + (issueIdx * 50)}ms` }}
-                      onClick={() => setSelectedIssue(issue)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <Badge variant="outline" className={priorityConfig[issue.priority].color}>
-                            {issue.priority}
-                          </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(issue)}>
-                                Edit Issue
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setAiIssue(issue)}>
-                                <Brain className="w-4 h-4 mr-2" />
-                                AI Assist
-                              </DropdownMenuItem>
-                              {status !== "in_progress" && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(issue, "in_progress")}>
-                                  Mark In Progress
-                                </DropdownMenuItem>
-                              )}
-                              {status !== "resolved" && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(issue, "resolved")}>
-                                  Mark Resolved
-                                </DropdownMenuItem>
-                              )}
-                              {isAdmin && (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => setDeleteIssue(issue)}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <p className="font-semibold text-sm text-foreground mb-1 leading-5">
-                          {issue.title}
-                        </p>
-                        <div className="min-h-5 text-xs text-muted-foreground mb-3">
-                          {issue.vendor?.name || "No vendor linked"}
-                        </div>
-                        <div className="mb-3 space-y-1.5 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <User className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{issue.assignee?.full_name || issue.assignee?.email || "Unassigned"}</span>
-                          </div>
-                          {issue.project_task && (
-                            <div className="flex items-center gap-1.5 truncate text-primary">
-                              <FolderKanban className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{issue.project_task.title}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
-                          </div>
-                          {issue.due_date && (
-                            <div className="flex items-center gap-1">
-                              <CalendarDays className="w-3 h-3" />
-                              <span className={new Date(issue.due_date) < new Date() && issue.status !== "resolved" && issue.status !== "closed" ? "text-destructive" : ""}>
-                                Due {formatDistanceToNow(new Date(issue.due_date), { addSuffix: true })}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {getIssuesByStatus(status).length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground border border-dashed rounded-xl bg-background/60">
-                      No issues in this stage
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+              {kanbanColumns.map((status, colIdx) => (
+                <section
+                  key={status}
+                  className="animate-stagger-fade-in rounded-2xl border border-border bg-muted/30 p-3"
+                  style={{ animationDelay: `${colIdx * 100}ms` }}
+                >
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <Badge className={statusConfig[status].color}>
+                        {statusLabels[status]}
+                      </Badge>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {getIssuesByStatus(status).length}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </section>
-            ))}
-          </div>
+                    {status === "in_progress" && <TimerReset className="w-4 h-4 text-warning" />}
+                  </div>
+
+                  <Droppable droppableId={status}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`space-y-3 min-h-[120px] rounded-xl transition-colors ${
+                          snapshot.isDraggingOver ? "bg-primary/5 ring-1 ring-primary/20" : ""
+                        }`}
+                      >
+                        {getIssuesByStatus(status).map((issue, issueIdx) => (
+                          <Draggable key={issue.id} draggableId={issue.id} index={issueIdx}>
+                            {(dragProvided, dragSnapshot) => (
+                              <div
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                className={`animate-stagger-fade-in ${
+                                  dragSnapshot.isDragging ? "rotate-1 scale-[1.02] z-50" : ""
+                                }`}
+                                style={{
+                                  animationDelay: `${(colIdx * 100) + (issueIdx * 50)}ms`,
+                                  ...dragProvided.draggableProps.style,
+                                }}
+                              >
+                                <Card
+                                  className={`cursor-pointer border-border/80 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                                    dragSnapshot.isDragging ? "shadow-xl border-primary/30" : ""
+                                  }`}
+                                  onClick={() => setSelectedIssue(issue)}
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-center gap-1.5">
+                                        {/* Drag handle */}
+                                        <div
+                                          {...dragProvided.dragHandleProps}
+                                          className="text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <GripVertical className="w-3.5 h-3.5" />
+                                        </div>
+                                        <Badge variant="outline" className={priorityConfig[issue.priority].color}>
+                                          {issue.priority}
+                                        </Badge>
+                                      </div>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <MoreHorizontal className="w-4 h-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => handleEdit(issue)}>Edit Issue</DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => setAiIssue(issue)}>
+                                            <Brain className="w-4 h-4 mr-2" />AI Assist
+                                          </DropdownMenuItem>
+                                          {status !== "in_progress" && (
+                                            <DropdownMenuItem onClick={() => handleStatusChange(issue, "in_progress")}>
+                                              Mark In Progress
+                                            </DropdownMenuItem>
+                                          )}
+                                          {status !== "resolved" && (
+                                            <DropdownMenuItem onClick={() => handleStatusChange(issue, "resolved")}>
+                                              Mark Resolved
+                                            </DropdownMenuItem>
+                                          )}
+                                          {isAdmin && (
+                                            <DropdownMenuItem
+                                              className="text-destructive"
+                                              onClick={() => setDeleteIssue(issue)}
+                                            >
+                                              Delete
+                                            </DropdownMenuItem>
+                                          )}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                    <p className="font-semibold text-sm text-foreground mb-1 leading-5">
+                                      {issue.title}
+                                    </p>
+                                    <div className="min-h-5 text-xs text-muted-foreground mb-3">
+                                      {issue.vendor?.name || "No vendor linked"}
+                                    </div>
+                                    <div className="mb-3 space-y-1.5 text-xs text-muted-foreground">
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        <User className="h-3.5 w-3.5 shrink-0" />
+                                        <span className="truncate">
+                                          {issue.assignee?.full_name || issue.assignee?.email || "Unassigned"}
+                                        </span>
+                                      </div>
+                                      {issue.project_task && (
+                                        <div className="flex items-center gap-1.5 truncate text-primary">
+                                          <FolderKanban className="h-3.5 w-3.5 shrink-0" />
+                                          <span className="truncate">{issue.project_task.title}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}</span>
+                                      </div>
+                                      {issue.due_date && (
+                                        <div className="flex items-center gap-1">
+                                          <CalendarDays className="w-3 h-3" />
+                                          <span
+                                            className={
+                                              new Date(issue.due_date) < new Date() &&
+                                              issue.status !== "resolved" &&
+                                              issue.status !== "closed"
+                                                ? "text-destructive"
+                                                : ""
+                                            }
+                                          >
+                                            Due {formatDistanceToNow(new Date(issue.due_date), { addSuffix: true })}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {getIssuesByStatus(status).length === 0 && !snapshot.isDraggingOver && (
+                          <div className="p-6 text-center text-sm text-muted-foreground border border-dashed rounded-xl bg-background/60">
+                            Drop issues here
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </section>
+              ))}
+            </div>
+          </DragDropContext>
         )}
 
         {/* Table View */}

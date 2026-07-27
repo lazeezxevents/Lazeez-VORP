@@ -7,6 +7,10 @@ import { useVendors } from "@/hooks/useVendors";
 import { useSprints, useMilestones, useActivityFeed, useWorkloadTracking } from "@/hooks/usePMSystem";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Issue as IssueType } from "@/hooks/useIssues";
+import { IssueTeamChat } from "@/components/issues/IssueTeamChat";
 import {
     Plus, Search, MoreVertical, Clock, User, Briefcase, ChevronDown,
     Loader2, Trash2, CalendarDays, Flag, Building2, BarChart3,
@@ -65,6 +69,55 @@ const ISSUE_TYPE_CONFIG: Record<string, { icon: any, color: string, bg: string }
     bug: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
     subtask: { icon: ArrowRight, color: 'text-slate-600', bg: 'bg-slate-50 border-slate-200' },
 };
+
+// ---------------------------------------------------------------------------
+// TaskLinkedChat — shows team chat for any issue linked to this task
+// ---------------------------------------------------------------------------
+
+function TaskLinkedChat({ taskId }: { taskId: string }) {
+    const [open, setOpen] = useState(false);
+
+    const { data: linkedIssue, isLoading } = useQuery({
+        queryKey: ["task-linked-issue", taskId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("issues")
+                .select("*")
+                .eq("project_task_id", taskId)
+                .maybeSingle();
+            if (error) throw error;
+            return data as IssueType | null;
+        },
+        enabled: !!taskId,
+    });
+
+    if (isLoading) return null;
+    if (!linkedIssue) return null;
+
+    return (
+        <div className="pt-4 border-t border-muted-foreground/10 space-y-2">
+            <button
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
+                    open
+                        ? "border-primary/30 bg-primary/5 text-primary"
+                        : "border-border hover:border-primary/30 hover:bg-muted/40 text-muted-foreground"
+                }`}
+                onClick={() => setOpen(!open)}
+            >
+                <div className="flex items-center gap-2">
+                    <span className="font-bold">💬 Team Chat</span>
+                    <span className="truncate max-w-[180px] text-muted-foreground">{linkedIssue.title}</span>
+                </div>
+                <span>{open ? "▲" : "▼"}</span>
+            </button>
+            {open && (
+                <div className="border border-primary/20 rounded-lg overflow-hidden" style={{ height: 360 }}>
+                    <IssueTeamChat issue={linkedIssue} />
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function ProjectBoard() {
     const { user, isStaff } = useAuth();
@@ -1416,8 +1469,7 @@ export default function ProjectBoard() {
                                     {/* Linked Issues Section */}
                                     <div className="space-y-3 pt-4 border-t border-muted-foreground/10">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-sm font-bold opacity-70 flex items-center gap-2 underline decoration-primary/30 text-primary">Linked Issues</Label>
-                                            <div className="flex items-center gap-1.5">
+                                            <Label className="text-sm font-bold opacity-70 flex items-center gap-2 underline decoration-primary/30 text-primary">Linked Issues</Label>                                            <div className="flex items-center gap-1.5">
                                                 <Select value={linkData.link_type} onValueChange={v => setLinkData(p => ({ ...p, link_type: v }))}>
                                                     <SelectTrigger className="h-6 w-[110px] text-[10px]"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
@@ -1468,6 +1520,10 @@ export default function ProjectBoard() {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Team Chat — shows chat for the issue linked to this task */}
+                                    <TaskLinkedChat taskId={selectedTask.id} />
+
                                 </div>
 
                                 <div className="space-y-5 bg-muted/20 p-4 rounded-xl border border-muted-foreground/10 h-fit">
