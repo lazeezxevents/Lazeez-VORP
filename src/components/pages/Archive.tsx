@@ -6,6 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Archive as ArchiveIcon, Search, Trash2, RotateCcw, Calendar,
   FileText, Ticket, DollarSign, Settings, Bell, BarChart3,
   Building2, AlertTriangle, Clock, Filter, Loader2
@@ -77,6 +87,7 @@ export default function Archive() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
 
   const filteredNotifications = useMemo(() => {
     let filtered = archivedNotifications;
@@ -103,9 +114,8 @@ export default function Archive() {
   }, [archivedNotifications]);
 
   const handleClearAll = () => {
-    if (confirm("Are you sure you want to permanently delete all archived notifications? This cannot be undone.")) {
-      clearAll();
-    }
+    clearAll();
+    setShowClearAllDialog(false);
   };
 
   return (
@@ -189,7 +199,7 @@ export default function Archive() {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={handleClearAll}
+                onClick={() => setShowClearAllDialog(true)}
                 className="gap-2"
                 disabled={isDeleting}
               >
@@ -322,6 +332,27 @@ export default function Archive() {
           </ScrollArea>
         )}
       </div>
+
+      {/* Clear All Confirmation Dialog */}
+      <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all archived notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {archivedNotifications.length} archived notifications. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

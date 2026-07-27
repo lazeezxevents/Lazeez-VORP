@@ -132,9 +132,19 @@ export function useArchivedNotifications() {
       if (deleteError) throw deleteError;
     },
     onSuccess: () => {
+      // Invalidate both caches
       queryClient.invalidateQueries({ queryKey: ["archived-notifications"] });
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
-      toast.success("Notification restored as unread");
+      
+      // Force a refetch after a brief delay to ensure DB has committed the changes
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["unified-notifications"] });
+      }, 100);
+      
+      toast.success("Notification restored", {
+        description: "Check your notification feed to see the restored item",
+        duration: 4000,
+      });
     },
     onError: (error) => {
       console.error("Failed to restore notification:", error);
