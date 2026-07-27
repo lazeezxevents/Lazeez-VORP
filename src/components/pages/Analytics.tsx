@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useBusinessInsights } from "@/hooks/useBusinessInsights";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart, RadarChart, 
@@ -32,7 +33,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function Analytics() {
   const { vendorStats, issueStats, mouStats, isLoading: statsLoading } = useAnalytics();
   const { data: safiScores, isLoading: safiLoading } = useSafiScore();
-  const isLoading = statsLoading || safiLoading;
+  const { data: businessInsights, isLoading: businessLoading } = useBusinessInsights();
+  const isLoading = statsLoading || safiLoading || businessLoading;
 
   const scoreDistribution = safiScores ? [
     { name: 'Excellent (90-100)', value: safiScores.filter(s => s.score >= 90).length, fill: 'hsl(var(--success))' },
@@ -516,38 +518,50 @@ export default function Analytics() {
             <CardTitle>Business Insights</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Total Vendors</p>
-                <p className="text-2xl font-bold text-foreground">57</p>
-                <p className="text-sm text-muted-foreground mt-1">Registered vendors</p>
+            {businessLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="p-4 rounded-lg bg-muted/30">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-8 w-16 mb-1" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ))}
               </div>
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Total Orders</p>
-                <p className="text-2xl font-bold text-foreground">1,248</p>
-                <p className="text-sm text-muted-foreground mt-1">Orders processed</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Total Vendors</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.totalVendors || 0}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Registered vendors</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.totalOrders || 0}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Orders processed</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.totalRevenue || "PKR 0"}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Revenue generated</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Pending Vendor Approvals</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.pendingVendorApprovals || 0}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Awaiting verification</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Vendor Retention</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.vendorRetention || "0%"}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Active within last 30 days</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground">Commission Earned</p>
+                  <p className="text-2xl font-bold text-foreground">{businessInsights?.commissionEarned || "PKR 0"}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Platform earnings</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold text-foreground">PKR 2.4M</p>
-                <p className="text-sm text-muted-foreground mt-1">Revenue generated</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Pending Vendor Approvals</p>
-                <p className="text-2xl font-bold text-foreground">8</p>
-                <p className="text-sm text-muted-foreground mt-1">Awaiting verification</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Vendor Retention</p>
-                <p className="text-2xl font-bold text-foreground">91%</p>
-                <p className="text-sm text-muted-foreground mt-1">Active within last 30 days</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/30">
-                <p className="text-sm text-muted-foreground">Commission Earned</p>
-                <p className="text-2xl font-bold text-foreground">PKR 312,000</p>
-                <p className="text-sm text-muted-foreground mt-1">Platform earnings</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
