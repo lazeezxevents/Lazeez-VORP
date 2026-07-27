@@ -93,37 +93,66 @@ const renderLineWithBoldValues = (
     const segments = splitLineForBold(line, boldValues);
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    let cursorX = align === "center" ? (pageWidth - maxWidth) / 2 : x;
+    const margin = 20;
     let currentY = y;
 
+    // For centered text, calculate total width and center the line
     if (align === "center") {
         doc.setFont("helvetica", "normal");
         const totalWidth = segments.reduce((sum, seg) => {
             doc.setFont("helvetica", seg.bold ? "bold" : "normal");
             return sum + doc.getTextWidth(seg.text);
         }, 0);
-        cursorX = (pageWidth - totalWidth) / 2;
+        let cursorX = (pageWidth - totalWidth) / 2;
+        
+        for (const seg of segments) {
+            doc.setFont("helvetica", seg.bold ? "bold" : "normal");
+            doc.text(seg.text, cursorX, currentY);
+            cursorX += doc.getTextWidth(seg.text);
+        }
+        
+        return currentY + lineHeight;
     }
 
+    // For left-aligned text with word wrapping
+    let cursorX = x;
+    const words: Array<{text: string; bold: boolean}> = [];
+    
+    // Split segments into words while preserving bold formatting
     for (const seg of segments) {
-        doc.setFont("helvetica", seg.bold ? "bold" : "normal");
-        const textWidth = doc.getTextWidth(seg.text);
+        const segWords = seg.text.split(' ');
+        segWords.forEach((word, idx) => {
+            // Add space back except for first word in segment
+            if (idx > 0 || words.length > 0) {
+                words.push({ text: ' ', bold: seg.bold });
+            }
+            words.push({ text: word, bold: seg.bold });
+        });
+    }
+
+    // Render words with wrapping
+    for (const word of words) {
+        doc.setFont("helvetica", word.bold ? "bold" : "normal");
+        const wordWidth = doc.getTextWidth(word.text);
         
-        // Check if text will go outside right margin
-        if (cursorX + textWidth > pageWidth - 20) {
+        // Check if word fits on current line
+        if (cursorX + wordWidth > pageWidth - margin && cursorX > x) {
             // Move to next line
             currentY += lineHeight;
             cursorX = x;
             
             // Check if we need a new page
-            if (currentY > pageHeight - 20) {
+            if (currentY > pageHeight - margin) {
                 doc.addPage();
-                currentY = 20;
+                currentY = margin;
             }
+            
+            // Skip leading space on new line
+            if (word.text === ' ') continue;
         }
         
-        doc.text(seg.text, cursorX, currentY);
-        cursorX += textWidth;
+        doc.text(word.text, cursorX, currentY);
+        cursorX += wordWidth;
     }
 
     return currentY + lineHeight;
@@ -228,11 +257,24 @@ export const generateEliteMOU = async (data: MOUGenerationData) => {
     autoTable(doc, {
         startY: currentY,
         head: [MOU_TABLE_HEADERS.slice()],
-        body: values.menu.map(item => [
-            item.name,
-            item.quantity,
-            item.price.includes("/-") ? item.price : `${item.price}/-`,
-        ]),
+        body: values.menu.map(item => {
+            // Extract just the price number, remove the unit (e.g., "2600/- per Kg" → "2600/-")
+            let priceValue = item.price;
+            if (priceValue.includes(" per ")) {
+                // Extract price before " per "
+                priceValue = priceValue.split(" per ")[0];
+            }
+            // Ensure it ends with "/-" format
+            if (!priceValue.includes("/-")) {
+                priceValue = `${priceValue}/-`;
+            }
+            
+            return [
+                item.name,
+                item.quantity,
+                priceValue,
+            ];
+        }),
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 2 },
         headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", lineWidth: 0.1, lineColor: [0, 0, 0] },
