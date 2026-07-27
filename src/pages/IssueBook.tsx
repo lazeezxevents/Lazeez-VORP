@@ -343,7 +343,7 @@ export default function IssueBook() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline">{v.avg_resolution_hours.toFixed(1)}h avg</Badge>
+                      <Badge variant="outline">{(v.avg_resolution_hours ?? 0).toFixed(1)}h avg</Badge>
                     </div>
                   ))}
                 </div>
@@ -379,13 +379,13 @@ export default function IssueBook() {
                         <div>
                           <p className="text-sm font-medium">{a.full_name || a.email}</p>
                           <p className="text-xs text-muted-foreground">
-                            {a.total_resolved}/{a.total_assigned} resolved · {a.total_hours_logged.toFixed(0)}h logged
+                            {a.total_resolved}/{a.total_assigned} resolved · {(a.total_hours_logged ?? 0).toFixed(0)}h logged
                           </p>
                         </div>
                       </div>
                       <Badge variant="outline" className="gap-1">
-                        {a.resolution_rate >= 80 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        {a.resolution_rate.toFixed(0)}%
+                        {(a.resolution_rate ?? 0) >= 80 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {(a.resolution_rate ?? 0).toFixed(0)}%
                       </Badge>
                     </div>
                   ))}
