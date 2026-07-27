@@ -31,7 +31,7 @@ export interface CommunicationPreferences {
   sound_volume_percent: number;
 }
 
-// UI preferences (localStorage)
+// UI preferences (localStorage + profiles table for email digest)
 export interface UIPreferences {
   enable_popup_alerts: boolean;
   enable_sound: boolean;
@@ -40,6 +40,9 @@ export interface UIPreferences {
   enable_click_sounds: boolean;
   enable_system_sounds: boolean;
   notification_sound_type: 'notification' | 'bell_ring' | 'success';
+  email_digest_enabled?: boolean;
+  email_digest_frequency?: 'daily' | 'weekly' | 'none';
+  email_digest_time?: string;
 }
 
 // Unified preferences
@@ -83,6 +86,9 @@ const DEFAULT_UI: UIPreferences = {
   enable_click_sounds: true,
   enable_system_sounds: true,
   notification_sound_type: 'notification',
+  email_digest_enabled: true,
+  email_digest_frequency: 'daily',
+  email_digest_time: '09:00',
 };
 
 const UI_STORAGE_KEY = "lazeez-notification-ui-prefs";
@@ -155,20 +161,43 @@ export function useUnifiedNotificationPreferences() {
     enabled: !!user?.id,
   });
 
-  // Load UI preferences from localStorage
+  // Load UI preferences from localStorage + email digest from profiles
   const { data: uiPrefs } = useQuery({
-    queryKey: ["notification-preferences-ui"],
-    queryFn: () => {
+    queryKey: ["notification-preferences-ui", user?.id],
+    queryFn: async () => {
+      let basePrefs = DEFAULT_UI;
+      
+      // Load from localStorage
       try {
         const stored = localStorage.getItem(UI_STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          return { ...DEFAULT_UI, ...parsed } as UIPreferences;
+          basePrefs = { ...DEFAULT_UI, ...parsed };
         }
       } catch (e) {
         console.error("Failed to load UI preferences:", e);
       }
-      return DEFAULT_UI;
+      
+      // Load email digest preferences from profiles table
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('email_digest_enabled, email_digest_frequency, email_digest_time')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && data) {
+            basePrefs.email_digest_enabled = data.email_digest_enabled ?? DEFAULT_UI.email_digest_enabled;
+            basePrefs.email_digest_frequency = data.email_digest_frequency ?? DEFAULT_UI.email_digest_frequency;
+            basePrefs.email_digest_time = data.email_digest_time ?? DEFAULT_UI.email_digest_time;
+          }
+        } catch (e) {
+          console.error("Failed to load email digest preferences:", e);
+        }
+      }
+      
+      return basePrefs;
     },
   });
 
@@ -223,12 +252,28 @@ export function useUnifiedNotificationPreferences() {
     },
   });
 
-  // Update UI preferences (localStorage)
+  // Update UI preferences (localStorage + email digest to profiles table)
   const updateUI = useMutation({
     mutationFn: async (updates: Partial<UIPreferences>) => {
       const current = uiPrefs || DEFAULT_UI;
       const updated = { ...current, ...updates };
       localStorage.setItem(UI_STORAGE_KEY, JSON.stringify(updated));
+      
+      // Save email digest preferences to profiles table
+      if (user?.id && ('email_digest_enabled' in updates || 'email_digest_frequency' in updates || 'email_digest_time' in updates)) {
+        const digestUpdates: any = {};
+        if ('email_digest_enabled' in updates) digestUpdates.email_digest_enabled = updates.email_digest_enabled;
+        if ('email_digest_frequency' in updates) digestUpdates.email_digest_frequency = updates.email_digest_frequency;
+        if ('email_digest_time' in updates) digestUpdates.email_digest_time = updates.email_digest_time;
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update(digestUpdates)
+          .eq('id', user.id);
+        
+        if (error) throw error;
+      }
+      
       return updated;
     },
     onSuccess: () => {

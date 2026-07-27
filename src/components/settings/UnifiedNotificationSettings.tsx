@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Mail, Volume2, VolumeX, Smartphone, Clock, FileText, Ticket, TrendingUp, Truck, DollarSign, Loader2, Save } from "lucide-react";
+import { Bell, Mail, Volume2, VolumeX, Smartphone, Clock, FileText, Ticket, TrendingUp, Truck, DollarSign, Loader2, Save, Inbox, Send } from "lucide-react";
 import { useUnifiedNotificationPreferences } from "@/hooks/useUnifiedNotificationPreferences";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -297,6 +297,92 @@ export function UnifiedNotificationSettings() {
               </motion.div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Email Digest Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Inbox className="w-5 h-5" />
+            Email digest preferences
+          </CardTitle>
+          <CardDescription>Daily or weekly summary emails with your tasks, issues, and updates</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Enable email digests</Label>
+              <p className="text-xs text-muted-foreground">Receive periodic summary emails of your work</p>
+            </div>
+            <Switch
+              checked={localUI.email_digest_enabled !== false}
+              onCheckedChange={(checked) => setLocalUI(prev => ({ ...prev, email_digest_enabled: checked }))}
+            />
+          </div>
+          
+          {localUI.email_digest_enabled !== false && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <Separator />
+              <div className="space-y-2">
+                <Label>Digest frequency</Label>
+                <Select
+                  value={localUI.email_digest_frequency || 'daily'}
+                  onValueChange={(value: any) => setLocalUI(prev => ({ ...prev, email_digest_frequency: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily (every morning)</SelectItem>
+                    <SelectItem value="weekly">Weekly (Monday mornings)</SelectItem>
+                    <SelectItem value="none">None (disabled)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {localUI.email_digest_frequency === 'daily' && "Receive a daily summary of your tasks, issues, and updates"}
+                  {localUI.email_digest_frequency === 'weekly' && "Receive a weekly performance summary every Monday"}
+                  {localUI.email_digest_frequency === 'none' && "No digest emails will be sent"}
+                </p>
+              </div>
+
+              {localUI.email_digest_frequency !== 'none' && (
+                <div className="space-y-2">
+                  <Label>Preferred delivery time</Label>
+                  <Input
+                    type="time"
+                    value={localUI.email_digest_time || '09:00'}
+                    onChange={(e) => setLocalUI(prev => ({ ...prev, email_digest_time: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Time is in your local timezone. Digests include assigned issues, watched issues, upcoming deadlines, and project tasks.
+                  </p>
+                </div>
+              )}
+
+              <Separator />
+              
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Send className="w-4 h-4" />
+                  What's included in digests?
+                </div>
+                <ul className="text-xs text-muted-foreground space-y-1 ml-6 list-disc">
+                  <li>Issues assigned to you (open & in progress)</li>
+                  <li>Watched issues with recent updates</li>
+                  <li>Upcoming deadlines (next 3 days)</li>
+                  <li>Your assigned project tasks</li>
+                  <li>New issues created {localUI.email_digest_frequency === 'daily' ? 'today' : 'this week'}</li>
+                  {localUI.email_digest_frequency === 'weekly' && (
+                    <>
+                      <li>Weekly performance stats (issues resolved, hours logged)</li>
+                      <li>Activity summary and trends</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </motion.div>
+          )}
         </CardContent>
       </Card>
 
