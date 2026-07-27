@@ -20,6 +20,7 @@ import {
   Briefcase,
   DollarSign,
   MessageSquare,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +44,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Building2, label: "Vendors", href: "/vendors", permission: "vendors.view" },
   { icon: Ticket, label: "Issues", href: "/issues", permission: "issues.view" },
+  { icon: BookOpen, label: "Issue Book", href: "/issue-book", permission: "issues.view" },
   { icon: FileText, label: "MOUs", href: "/mous", permission: "mous.view" },
   { icon: MessageSquare, label: "Communication", href: "/communication" },
   { icon: CalendarDays, label: "Calendar", href: "/calendar", permission: "calendar.view" },

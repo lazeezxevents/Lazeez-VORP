@@ -18,6 +18,8 @@ import { useIssues } from "@/hooks/useIssues";
 import { useAuth } from "@/contexts/AuthContext";
 import { MOUActivityWidget } from "@/components/dashboard/MOUActivityWidget";
 import { EmployeeVendorWidget } from "@/components/dashboard/EmployeeVendorWidget";
+import { WatchedIssuesWidget } from "@/components/dashboard/WatchedIssuesWidget";
+import { AssignedTasksWidget } from "@/components/dashboard/AssignedTasksWidget";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -225,6 +227,12 @@ export default function Dashboard() {
 
         {/* MOU Activity Widget */}
         {hasPermission("mous.view") && <MOUActivityWidget />}
+
+        {/* Watched Issues + Assigned Tasks */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <WatchedIssuesWidget />
+          <AssignedTasksWidget />
+        </div>
 
         {/* Employee Vendor Widget */}
         {hasPermission("users.manage") && <EmployeeVendorWidget />}

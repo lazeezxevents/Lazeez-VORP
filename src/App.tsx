@@ -25,6 +25,7 @@ import UserApprovals from "@/pages/UserApprovals";
 import ProjectBoard from "@/components/projects/ProjectBoard";
 import ApprovalPending from "@/pages/ApprovalPending";
 import SetPassword from "@/pages/SetPassword";
+import IssueBook from "@/pages/IssueBook";
 import Archive from "@/pages/Archive";
 import Error500 from "@/pages/Error500";
 import Error403 from "@/pages/Error403";
@@ -182,6 +183,14 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <ProjectBoard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/issue-book"
+                    element={
+                      <ProtectedRoute>
+                        <IssueBook />
                       </ProtectedRoute>
                     }
                   />

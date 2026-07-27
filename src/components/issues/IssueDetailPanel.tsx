@@ -14,7 +14,7 @@ import {
   MessageSquare,
   Paperclip,
   Timer,
-  Eye,
+  BookOpen,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Issue, IssuePriority, IssueStatus, useUpdateIssue, useDeleteIssue } from "@/hooks/useIssues";
+import { Issue, IssuePriority, IssueStatus, useUpdateIssue, useDeleteIssue, useIssue } from "@/hooks/useIssues";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { FileUploadSection } from "./FileUploadSection";
 import { WatchersSection } from "./WatchersSection";
@@ -132,7 +132,7 @@ interface IssueDetailPanelProps {
 // ---------------------------------------------------------------------------
 
 export function IssueDetailPanel({
-  issue,
+  issue: issueProp,
   open,
   onClose,
   onEdit,
@@ -143,6 +143,11 @@ export function IssueDetailPanel({
   const deleteIssueMutation = useDeleteIssue();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Always subscribe to the live version of this issue so the panel refreshes
+  // in real-time when status/priority/assignment change.
+  const { data: liveIssue } = useIssue(issueProp?.id ?? "");
+  const issue = liveIssue ?? issueProp;
 
   const handleStatusChange = async (newStatus: IssueStatus) => {
     if (!issue) return;
@@ -302,17 +307,17 @@ export function IssueDetailPanel({
                           Overview
                         </TabsTrigger>
                         <TabsTrigger
-                          value="activity"
+                          value="remarks"
                           className="h-9 px-3 text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent gap-1.5"
                         >
-                          <MessageSquare className="w-3 h-3" />
-                          Activity
+                          <BookOpen className="w-3 h-3" />
+                          Remarks
                         </TabsTrigger>
                         <TabsTrigger
                           value="chat"
                           className="h-9 px-3 text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent gap-1.5"
                         >
-                          <Eye className="w-3 h-3" />
+                          <MessageSquare className="w-3 h-3" />
                           Team Chat
                         </TabsTrigger>
                         <TabsTrigger
@@ -477,8 +482,8 @@ export function IssueDetailPanel({
                         </motion.div>
                       </TabsContent>
 
-                      {/* ── Activity ── */}
-                      <TabsContent value="activity" className="p-6 m-0 h-[460px]">
+                      {/* ── Remarks ── */}
+                      <TabsContent value="remarks" className="p-6 m-0 h-[460px]">
                         <ActivityTimeline issueId={issue.id} />
                       </TabsContent>
 
@@ -494,7 +499,10 @@ export function IssueDetailPanel({
 
                       {/* ── Time ── */}
                       <TabsContent value="time" className="p-6 m-0">
-                        <TimeTrackingSection issueId={issue.id} />
+                        <TimeTrackingSection
+                          issueId={issue.id}
+                          autoStart={false}
+                        />
                       </TabsContent>
 
                     </div>

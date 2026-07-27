@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -53,7 +53,11 @@ const linkedIssueSelect = `
 
 async function attachIssuePeople<T extends Issue | Issue[] | null>(issues: T): Promise<T> {
   const records = (Array.isArray(issues) ? issues : issues ? [issues] : []) as Issue[];
-  const personIds = [...new Set(records.flatMap((issue) => [issue.assigned_to, issue.reported_by]).filter(Boolean))] as string[];
+  const personIds = [
+    ...new Set(
+      records.flatMap((i) => [i.assigned_to, i.reported_by]).filter(Boolean)
+    ),
+  ] as string[];
   if (personIds.length === 0) return issues;
 
   const { data: profiles } = await supabase
@@ -62,15 +66,25 @@ async function attachIssuePeople<T extends Issue | Issue[] | null>(issues: T): P
     .in("id", personIds);
 
   if (!profiles) return issues;
-  const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+  const byId = new Map(profiles.map((p) => [p.id, p]));
   const addPeople = (issue: Issue): Issue => ({
     ...issue,
-    assignee: issue.assigned_to ? byId.get(issue.assigned_to) || null : null,
-    reporter: byId.get(issue.reported_by) || null,
+    assignee: issue.assigned_to ? byId.get(issue.assigned_to) ?? null : null,
+    reporter: byId.get(issue.reported_by) ?? null,
   });
 
-  return (Array.isArray(issues) ? records.map(addPeople) : issues ? addPeople(issues as Issue) : null) as T;
+  return (
+    Array.isArray(issues)
+      ? records.map(addPeople)
+      : issues
+      ? addPeople(issues as Issue)
+      : null
+  ) as T;
 }
+
+// ---------------------------------------------------------------------------
+// useIssues — list + real-time subscription
+// ---------------------------------------------------------------------------
 
 export function useIssues() {
   const queryClient = useQueryClient();
@@ -78,17 +92,16 @@ export function useIssues() {
   const query = useQuery({
     queryKey: ["issues"],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("issues") as any)
+      const { data, error } = await (supabase.from("issues") as any)
         .select(linkedIssueSelect)
         .order("created_at", { ascending: false });
 
       if (!error) return attachIssuePeople(data as Issue[]);
 
-      // Keep the Issue workspace usable if the optional project-link migration
-      // has not yet been applied to a live database.
-      const { data: fallbackData, error: fallbackError } = await (supabase
-        .from("issues") as any)
+      // Fallback if project columns don't exist yet
+      const { data: fallbackData, error: fallbackError } = await (
+        supabase.from("issues") as any
+      )
         .select(baseIssueSelect)
         .order("created_at", { ascending: false });
 
@@ -97,34 +110,38 @@ export function useIssues() {
     },
   });
 
-  // Real-time subscription
+  // Real-time: invalidate list + individual cached issue + activity on any change
   useEffect(() => {
     const channel = supabase
       .channel("issues-realtime")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "issues",
-        },
+        { event: "*", schema: "public", table: "issues" },
         (payload) => {
-          // Invalidate and refetch on any change
           queryClient.invalidateQueries({ queryKey: ["issues"] });
-          
-          // Show toast for new issues
+
           if (payload.eventType === "INSERT") {
-            toast.info("New issue created", {
-              description: (payload.new as Issue).title,
-            });
+            const newIssue = payload.new as Issue;
+            queryClient.invalidateQueries({ queryKey: ["issues", newIssue.id] });
+            toast.info("New issue created", { description: newIssue.title });
           } else if (payload.eventType === "UPDATE") {
-            const newData = payload.new as Issue;
-            const oldData = payload.old as Issue;
-            if (newData.status !== oldData.status) {
-              toast.info("Issue status updated", {
-                description: `${newData.title} → ${newData.status.replace("_", " ")}`,
+            const updated = payload.new as Issue;
+            const old = payload.old as Issue;
+            // Invalidate the individual issue so detail panel refreshes instantly
+            queryClient.invalidateQueries({ queryKey: ["issues", updated.id] });
+            // Also invalidate activity since a trigger will have fired
+            queryClient.invalidateQueries({
+              queryKey: ["issue-activity", updated.id],
+            });
+            if (updated.status !== old.status) {
+              const label = updated.status.replace("_", " ");
+              toast.info(`Issue ${label}`, {
+                description: updated.title,
               });
             }
+          } else if (payload.eventType === "DELETE") {
+            const deleted = payload.old as Issue;
+            queryClient.removeQueries({ queryKey: ["issues", deleted.id] });
           }
         }
       )
@@ -138,20 +155,26 @@ export function useIssues() {
   return query;
 }
 
+// ---------------------------------------------------------------------------
+// useIssue — single issue with real-time
+// ---------------------------------------------------------------------------
+
 export function useIssue(id: string) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ["issues", id],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("issues") as any)
+      const { data, error } = await (supabase.from("issues") as any)
         .select(linkedIssueSelect)
         .eq("id", id)
         .maybeSingle();
 
       if (!error) return attachIssuePeople(data as Issue | null);
 
-      const { data: fallbackData, error: fallbackError } = await (supabase
-        .from("issues") as any)
+      const { data: fallbackData, error: fallbackError } = await (
+        supabase.from("issues") as any
+      )
         .select(baseIssueSelect)
         .eq("id", id)
         .maybeSingle();
@@ -160,10 +183,32 @@ export function useIssue(id: string) {
       return attachIssuePeople(fallbackData as Issue | null);
     },
     enabled: !!id,
+    staleTime: 0,
   });
+
+  // Subscribe to changes on this specific issue
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`issue-detail-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "issues", filter: `id=eq.${id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["issues", id] });
+          queryClient.invalidateQueries({ queryKey: ["issue-activity", id] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, queryClient]);
+
+  return query;
 }
 
-import { useMutation } from "@tanstack/react-query";
+// ---------------------------------------------------------------------------
+// useCreateIssue — auto-start time tracking on creation
+// ---------------------------------------------------------------------------
 
 export function useCreateIssue() {
   const queryClient = useQueryClient();
@@ -173,19 +218,34 @@ export function useCreateIssue() {
     mutationFn: async (input: CreateIssueInput) => {
       const { data, error } = await supabase
         .from("issues")
-        .insert({
-          ...input,
-          reported_by: user!.id,
-        })
+        .insert({ ...input, reported_by: user!.id })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Auto-start time tracking: log 0 hours as a placeholder to signal the
+      // timer started. A real entry (> 0) is required by the check constraint,
+      // so we only insert if the issue is assigned to someone.
+      if (data.assigned_to) {
+        try {
+          await supabase.from("issue_time_logs").insert({
+            issue_id: data.id,
+            user_id: data.assigned_to,
+            hours: 0.01, // minimal valid value — shows timer started
+            description: "Timer started automatically on issue creation",
+            logged_date: new Date().toISOString().split("T")[0],
+          });
+        } catch {
+          /* non-blocking — time auto-log is best-effort */
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
-      toast.success("Issue created successfully");
+      toast.success("Issue created");
     },
     onError: (error: Error) => {
       toast.error(`Failed to create issue: ${error.message}`);
@@ -193,16 +253,24 @@ export function useCreateIssue() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// useUpdateIssue — email via existing send-issue-notification edge function
+// ---------------------------------------------------------------------------
+
 export function useUpdateIssue() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...input }: Partial<Issue> & { id: string }) => {
       const updateData: Record<string, unknown> = { ...input };
-      
-      // Set resolved_at when status changes to resolved
+
       if (input.status === "resolved" || input.status === "closed") {
         updateData.resolved_at = new Date().toISOString();
+      }
+      // Clear resolved_at when re-opening
+      if (input.status === "open" || input.status === "in_progress") {
+        updateData.resolved_at = null;
       }
 
       const { data, error } = await supabase
@@ -213,12 +281,52 @@ export function useUpdateIssue() {
         .single();
 
       if (error) throw error;
+
+      // Fire email notifications via the existing edge function (non-blocking)
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+      if (input.assigned_to) {
+        // Assignment email
+        fetch(`${baseUrl}/functions/v1/send-issue-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${anonKey}`,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({
+            issue_id: id,
+            notification_type: "assignment",
+            assigned_to: input.assigned_to,
+          }),
+        }).catch(() => {});
+      }
+
+      if (input.status && input.status !== (updateData as any).__prev_status) {
+        // Status-change email — best effort
+        fetch(`${baseUrl}/functions/v1/send-issue-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${anonKey}`,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({
+            issue_id: id,
+            notification_type: "status_update",
+            new_status: input.status,
+          }),
+        }).catch(() => {});
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
       queryClient.invalidateQueries({ queryKey: ["issues", data.id] });
-      toast.success("Issue updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["issue-activity", data.id] });
+      toast.success("Issue updated");
     },
     onError: (error: Error) => {
       toast.error(`Failed to update issue: ${error.message}`);
@@ -226,17 +334,22 @@ export function useUpdateIssue() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// useDeleteIssue
+// ---------------------------------------------------------------------------
+
 export function useDeleteIssue() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Cascade deletes handle activity, attachments, watchers, time_logs
       const { error } = await supabase.from("issues").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
-      toast.success("Issue deleted successfully");
+      toast.success("Issue deleted");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete issue: ${error.message}`);
