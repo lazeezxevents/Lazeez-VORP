@@ -218,26 +218,31 @@ export function useCreateIssue() {
     mutationFn: async (input: CreateIssueInput) => {
       const { data, error } = await supabase
         .from("issues")
-        .insert({ ...input, reported_by: user!.id })
+        .insert({ ...input, reported_by: user!.id, created_by: user!.id })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Auto-start time tracking: log 0 hours as a placeholder to signal the
-      // timer started. A real entry (> 0) is required by the check constraint,
-      // so we only insert if the issue is assigned to someone.
+      // Auto-add creator as watcher
+      try {
+        await supabase.from("issue_watchers").insert({
+          issue_id: data.id,
+          user_id: user!.id,
+        });
+      } catch {
+        /* non-blocking */
+      }
+
+      // Auto-start timer if assigned
       if (data.assigned_to) {
         try {
-          await supabase.from("issue_time_logs").insert({
-            issue_id: data.id,
-            user_id: data.assigned_to,
-            hours: 0.01, // minimal valid value — shows timer started
-            description: "Timer started automatically on issue creation",
-            logged_date: new Date().toISOString().split("T")[0],
+          await supabase.rpc("start_issue_timer", {
+            p_issue_id: data.id,
+            p_user_id: data.assigned_to,
           });
         } catch {
-          /* non-blocking — time auto-log is best-effort */
+          /* non-blocking */
         }
       }
 
@@ -245,7 +250,8 @@ export function useCreateIssue() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
-      toast.success("Issue created");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Issue created successfully");
     },
     onError: (error: Error) => {
       toast.error(`Failed to create issue: ${error.message}`);
@@ -353,6 +359,186 @@ export function useDeleteIssue() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete issue: ${error.message}`);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Timer Functions - Session-independent
+// ---------------------------------------------------------------------------
+
+export function useStartIssueTimer() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ issueId }: { issueId: string }) => {
+      if (!user?.id) throw new Error("User not authenticated");
+      
+      const { data, error } = await supabase.rpc("start_issue_timer", {
+        p_issue_id: issueId,
+        p_user_id: user.id,
+        p_session_id: `session_${Date.now()}`,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { issueId }) => {
+      queryClient.invalidateQueries({ queryKey: ["issue-timer", issueId] });
+      queryClient.invalidateQueries({ queryKey: ["issue-time-logs", issueId] });
+      toast.success("Timer started");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to start timer: ${error.message}`);
+    },
+  });
+}
+
+export function useStopIssueTimer() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ issueId }: { issueId: string }) => {
+      if (!user?.id) throw new Error("User not authenticated");
+      
+      const { data, error } = await supabase.rpc("stop_issue_timer", {
+        p_issue_id: issueId,
+        p_user_id: user.id,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { issueId }) => {
+      queryClient.invalidateQueries({ queryKey: ["issue-timer", issueId] });
+      queryClient.invalidateQueries({ queryKey: ["issue-time-logs", issueId] });
+      toast.success("Timer stopped");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to stop timer: ${error.message}`);
+    },
+  });
+}
+
+export function useActiveTimer(issueId: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["issue-timer", issueId, user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+
+      const { data, error } = await supabase.rpc("get_active_timer", {
+        p_issue_id: issueId,
+        p_user_id: user.id,
+      });
+
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!issueId && !!user?.id,
+    refetchInterval: 1000, // Update every second for live timer
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Drag and Drop Reordering
+// ---------------------------------------------------------------------------
+
+export function useReorderIssue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ issueId, newPosition }: { issueId: string; newPosition: number }) => {
+      const { error } = await supabase.rpc("reorder_issue", {
+        p_issue_id: issueId,
+        p_new_position: newPosition,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["issues"] });
+      toast.success("Issue reordered");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reorder: ${error.message}`);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Archive Functions
+// ---------------------------------------------------------------------------
+
+export function useArchiveIssue() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (issueId: string) => {
+      if (!user?.id) throw new Error("User not authenticated");
+
+      const { error } = await supabase.rpc("archive_issue", {
+        p_issue_id: issueId,
+        p_user_id: user.id,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["issues"] });
+      toast.success("Issue archived");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to archive: ${error.message}`);
+    },
+  });
+}
+
+export function useUnarchiveIssue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (issueId: string) => {
+      const { error } = await supabase.rpc("unarchive_issue", {
+        p_issue_id: issueId,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["issues"] });
+      toast.success("Issue unarchived");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to unarchive: ${error.message}`);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Issue Book Stats
+// ---------------------------------------------------------------------------
+
+export function useIssueBookStats() {
+  return useQuery({
+    queryKey: ["issue-book-stats"],
+    queryFn: async () => {
+      const [vendorStats, assigneeStats] = await Promise.all([
+        supabase.from("issue_book_vendor_stats").select("*"),
+        supabase.from("issue_book_assignee_stats").select("*"),
+      ]);
+
+      if (vendorStats.error) throw vendorStats.error;
+      if (assigneeStats.error) throw assigneeStats.error;
+
+      return {
+        vendors: vendorStats.data || [],
+        assignees: assigneeStats.data || [],
+      };
     },
   });
 }
