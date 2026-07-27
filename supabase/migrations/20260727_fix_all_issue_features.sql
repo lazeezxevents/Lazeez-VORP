@@ -30,11 +30,26 @@ CREATE INDEX IF NOT EXISTS idx_issue_activity_user_id ON issue_activity(user_id)
 -- PART 2: Fix RLS policies for issue_activity (allow comments from authenticated users)
 -- ============================================================================
 
+-- Drop all possible variations of the policies to prevent conflicts
 DROP POLICY IF EXISTS "System can create activity" ON issue_activity;
 DROP POLICY IF EXISTS "Authenticated users can add comments" ON issue_activity;
 DROP POLICY IF EXISTS "All authenticated can add activity" ON issue_activity;
 DROP POLICY IF EXISTS "Authenticated users can add activity" ON issue_activity;
+DROP POLICY IF EXISTS "Auth users can add activity" ON issue_activity;
 DROP POLICY IF EXISTS "Users can update own activity" ON issue_activity;
+DROP POLICY IF EXISTS "Anyone can view issue activity" ON issue_activity;
+
+-- Create view policy (needed if it doesn't exist yet)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'issue_activity' 
+    AND policyname = 'Anyone can view issue activity'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Anyone can view issue activity" ON issue_activity FOR SELECT USING (true)';
+  END IF;
+END $$;
 
 -- Allow all authenticated users to insert activity (comments, time logs, etc.)
 CREATE POLICY "Authenticated users can add activity"
@@ -70,14 +85,21 @@ ALTER TABLE issue_chat_messages ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for chat messages
 DROP POLICY IF EXISTS "All authenticated can view chat messages" ON issue_chat_messages;
 DROP POLICY IF EXISTS "All authenticated can send chat messages" ON issue_chat_messages;
+DROP POLICY IF EXISTS "Anyone can view chat messages" ON issue_chat_messages;
+DROP POLICY IF EXISTS "Auth users can send messages" ON issue_chat_messages;
 
-CREATE POLICY "All authenticated can view chat messages"
-  ON issue_chat_messages FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "All authenticated can send chat messages"
-  ON issue_chat_messages FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- Only create if they don't exist (the CREATE_ALL migration will create the final versions)
+DO $$
+BEGIN
+  -- Check if any chat message policies exist, if not create temporary ones
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'issue_chat_messages'
+  ) THEN
+    EXECUTE 'CREATE POLICY "All authenticated can view chat messages" ON issue_chat_messages FOR SELECT USING (auth.uid() IS NOT NULL)';
+    EXECUTE 'CREATE POLICY "All authenticated can send chat messages" ON issue_chat_messages FOR INSERT WITH CHECK (auth.uid() = user_id)';
+  END IF;
+END $$;
 
 -- Enable realtime
 DO $$
@@ -144,43 +166,34 @@ ON CONFLICT (id) DO UPDATE SET
     'application/zip', 'application/x-zip-compressed'
   ];
 
--- Drop old policies
+-- Drop old policies (all variations to prevent conflicts)
 DROP POLICY IF EXISTS "Authenticated users can view issue attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload issue attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own attachments from storage" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can view attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own uploads" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own uploads" ON storage.objects;
+DROP POLICY IF EXISTS "issue-attachments public read" ON storage.objects;
+DROP POLICY IF EXISTS "issue-attachments auth upload" ON storage.objects;
+DROP POLICY IF EXISTS "issue-attachments auth delete" ON storage.objects;
 
--- Create new comprehensive policies
-CREATE POLICY "Authenticated users can view attachments"
-  ON storage.objects FOR SELECT
-  USING (
-    bucket_id = 'issue-attachments' 
-    AND auth.uid() IS NOT NULL
-  );
-
-CREATE POLICY "Authenticated users can upload attachments"
-  ON storage.objects FOR INSERT
-  WITH CHECK (
-    bucket_id = 'issue-attachments' 
-    AND auth.uid() IS NOT NULL
-    AND (storage.foldername(name))[1] IS NOT NULL -- Ensure file is in a folder (issue_id)
-  );
-
-CREATE POLICY "Users can delete own uploads"
-  ON storage.objects FOR DELETE
-  USING (
-    bucket_id = 'issue-attachments' 
-    AND auth.uid() IS NOT NULL
-  );
-
-CREATE POLICY "Users can update own uploads"
-  ON storage.objects FOR UPDATE
-  USING (
-    bucket_id = 'issue-attachments' 
-    AND auth.uid() IS NOT NULL
-  );
+-- Only create if they don't exist (CREATE_ALL migration will create final versions)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'objects' 
+    AND schemaname = 'storage'
+    AND policyname LIKE '%issue-attachments%'
+  ) THEN
+    -- Create temporary policies
+    EXECUTE 'CREATE POLICY "Authenticated users can view attachments" ON storage.objects FOR SELECT USING (bucket_id = ''issue-attachments'' AND auth.uid() IS NOT NULL)';
+    EXECUTE 'CREATE POLICY "Authenticated users can upload attachments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = ''issue-attachments'' AND auth.uid() IS NOT NULL AND (storage.foldername(name))[1] IS NOT NULL)';
+    EXECUTE 'CREATE POLICY "Users can delete own uploads" ON storage.objects FOR DELETE USING (bucket_id = ''issue-attachments'' AND auth.uid() IS NOT NULL)';
+    EXECUTE 'CREATE POLICY "Users can update own uploads" ON storage.objects FOR UPDATE USING (bucket_id = ''issue-attachments'' AND auth.uid() IS NOT NULL)';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- PART 6: Add project_tasks table if it doesn't exist (for drag-drop)
@@ -332,7 +345,6 @@ GRANT EXECUTE ON FUNCTION reorder_project_tasks TO authenticated;
 -- PART 8: Trigger to auto-update updated_at timestamp
 -- ============================================================================
 
-DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
