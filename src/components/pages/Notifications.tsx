@@ -601,9 +601,9 @@ export default function Notifications() {
                                     </div>
 
                                     <div className="flex-1 min-w-0 py-0.5">
-                                      <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-start justify-between gap-2 mb-1">
                                         <div className="min-w-0 flex-1">
-                                          <div className="flex items-center gap-2 mb-1">
+                                          <div className="flex items-center gap-2">
                                             <h4 className={cn("text-sm font-bold truncate tracking-tight", !isRead ? "text-foreground" : "text-muted-foreground")}>
                                               {notification.title}
                                             </h4>
@@ -614,19 +614,19 @@ export default function Notifications() {
                                               </Badge>
                                             )}
                                           </div>
-                                          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed font-medium">
-                                            {notification.message}
-                                          </p>
                                         </div>
-                                        <div className="shrink-0 text-right">
+                                        <div className="shrink-0 text-right ml-4">
                                           <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap bg-muted/50 px-2 py-1 rounded-lg">
                                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                                           </span>
                                         </div>
                                       </div>
+                                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed font-medium">
+                                        {notification.message}
+                                      </p>
                                     </div>
 
-                                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                                       {!isRead && (
                                         <motion.button
                                           whileHover={{ scale: 1.1 }}
