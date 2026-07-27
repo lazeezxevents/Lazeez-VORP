@@ -27,11 +27,12 @@
 - Unread badge didn't reflect restored notifications
 
 ### 4. ❌ Migration Policy Conflicts
-**Root Cause**: Migration script created policies without first dropping them, causing "policy already exists" errors on re-run.
+**Root Cause**: Multiple migration files (`20260727_CREATE_ALL_MISSING_TABLES.sql` and `20260727_fix_all_issue_features.sql`) were creating the same policies with different names, causing "policy already exists" errors when migrations run in alphabetical order.
 
 **Impact**:
 - Migrations failed to apply
 - Database couldn't be reset or updated cleanly
+- Deployment failures
 
 ---
 
@@ -126,35 +127,63 @@ Combined with **Fix 2**, restored notifications now:
 
 ### ✅ Fix 4: Prevent Migration Policy Conflicts
 
-**File**: `supabase/migrations/20260727_CREATE_ALL_MISSING_TABLES.sql`
+**Files**: 
+- `supabase/migrations/20260727_CREATE_ALL_MISSING_TABLES.sql`
+- `supabase/migrations/20260727_fix_all_issue_features.sql`
 
 **Changes**:
-- Added `DROP POLICY IF EXISTS` before every `CREATE POLICY`
-- Ensured idempotent migrations (can be run multiple times safely)
-- Moved `ENABLE ROW LEVEL SECURITY` above policy drops to ensure correct order
+- Added `DROP POLICY IF EXISTS` for **all policy name variations** across both migrations
+- Used conditional policy creation (`DO $$ ... IF NOT EXISTS ... THEN CREATE POLICY`) in the `fix_all` migration
+- Ensured migrations are idempotent and can run in any order
 
-**Code**:
+**Conflicting Policies Fixed**:
+
+1. **issue_activity table**:
+   - "Auth users can add activity" vs "Authenticated users can add activity"
+   - "Users can update own activity" (both migrations)
+   - "Anyone can view issue activity" (both migrations)
+
+2. **issue_chat_messages table**:
+   - "Anyone can view chat messages" vs "All authenticated can view chat messages"
+   - "Auth users can send messages" vs "All authenticated can send chat messages"
+
+3. **storage.objects (issue-attachments)**:
+   - "issue-attachments public read" vs "Authenticated users can view attachments"
+   - "issue-attachments auth upload" vs "Authenticated users can upload attachments"
+   - "issue-attachments auth delete" vs "Users can delete own uploads"
+   - Plus "Users can update own uploads" (only in fix_all)
+
+**Code Example**:
 ```sql
--- Before
-ALTER TABLE issue_activity ENABLE ROW LEVEL SECURITY;
+-- In fix_all_issue_features.sql (runs first alphabetically)
 
-DROP POLICY IF EXISTS "Anyone can view issue activity" ON issue_activity;
-CREATE POLICY "Anyone can view issue activity" ...
-
--- After (fixed)
-DROP POLICY IF EXISTS "Anyone can view issue activity" ON issue_activity;
+-- Drop ALL possible variations
 DROP POLICY IF EXISTS "Auth users can add activity" ON issue_activity;
+DROP POLICY IF EXISTS "Authenticated users can add activity" ON issue_activity;
 DROP POLICY IF EXISTS "Users can update own activity" ON issue_activity;
+-- ... all other variations
 
-CREATE POLICY "Anyone can view issue activity" ...
-CREATE POLICY "Auth users can add activity" ...
-CREATE POLICY "Users can update own activity" ...
+-- Conditional creation
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'issue_activity' 
+    AND policyname = 'Anyone can view issue activity'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Anyone can view issue activity" ...';
+  END IF;
+END $$;
+
+-- Then create the policies this migration needs
+CREATE POLICY "Authenticated users can add activity" ...
 ```
 
 **Result**:
 ✅ Migrations can be run multiple times without errors  
 ✅ Clean database resets possible  
-✅ No "policy already exists" errors
+✅ No "policy already exists" errors  
+✅ Migrations work in any order
 
 ---
 
@@ -191,6 +220,7 @@ CREATE POLICY "Users can update own activity" ...
 
 ### Database
 - `supabase/migrations/20260727_CREATE_ALL_MISSING_TABLES.sql`
+- `supabase/migrations/20260727_fix_all_issue_features.sql`
 
 ### Frontend
 - `src/hooks/useNotifications.ts`
@@ -202,7 +232,9 @@ CREATE POLICY "Users can update own activity" ...
 
 ## Deployment Status
 
-✅ **Committed**: `c152fad`  
+✅ **First Fix Committed**: `c152fad` - Fixed assignee_id and notification read state  
+✅ **Documentation Added**: `c6f488e` - Added comprehensive fix documentation  
+✅ **Policy Conflicts Fixed**: `5d1821e` - Resolved all policy duplicate errors  
 ✅ **Pushed**: `main` branch  
 ✅ **Deployed**: Live on production
 
