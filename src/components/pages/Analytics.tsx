@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart
+  PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart, RadarChart, 
+  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
-import { Building2, Ticket, Clock, TrendingUp, FileText, CheckCircle2, Download } from "lucide-react";
+import { Building2, Ticket, Clock, TrendingUp, FileText, CheckCircle2, Download, 
+  AlertTriangle, Users, Calendar, Star, Target, Activity } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataExportPanel } from "@/components/analytics/DataExportPanel";
 import { useSafiScore } from "@/hooks/useSafiScore";
@@ -76,31 +78,57 @@ export default function Analytics() {
       title: "Total Vendors",
       value: vendorStats.data?.totalVendors || 0,
       subtitle: `${vendorStats.data?.activeVendors || 0} active`,
-      icon: Building2
+      icon: Building2,
+      color: "from-blue-500 to-blue-600"
     },
     {
       title: "Total Issues",
       value: issueStats.data?.totalIssues || 0,
       subtitle: `${issueStats.data?.openIssues || 0} open`,
-      icon: Ticket
+      icon: Ticket,
+      color: "from-amber-500 to-amber-600"
     },
     {
       title: "Avg Resolution",
       value: `${(issueStats.data?.avgResolutionTime || 0).toFixed(1)}h`,
       subtitle: "average time",
-      icon: Clock
+      icon: Clock,
+      color: "from-purple-500 to-purple-600"
     },
     {
       title: "Active MOUs",
       value: mouStats.data?.activeMous || 0,
       subtitle: `${mouStats.data?.totalMous || 0} total`,
-      icon: FileText
+      icon: FileText,
+      color: "from-emerald-500 to-emerald-600"
     },
     {
       title: "Top SAFI Score",
       value: topSafiVendor?.score || 0,
       subtitle: topSafiVendor?.vendorName || "N/A",
-      icon: TrendingUp
+      icon: TrendingUp,
+      color: "from-cyan-500 to-cyan-600"
+    },
+    {
+      title: "Pending Vendors",
+      value: vendorStats.data?.pendingVendors || 0,
+      subtitle: "awaiting approval",
+      icon: Users,
+      color: "from-orange-500 to-orange-600"
+    },
+    {
+      title: "Expired MOUs",
+      value: mouStats.data?.expiredMous || 0,
+      subtitle: "need renewal",
+      icon: Calendar,
+      color: "from-rose-500 to-rose-600"
+    },
+    {
+      title: "In Progress Issues",
+      value: issueStats.data?.inProgressIssues || 0,
+      subtitle: "actively worked on",
+      icon: Activity,
+      color: "from-indigo-500 to-indigo-600"
     },
   ];
 
@@ -124,7 +152,7 @@ export default function Analytics() {
   return (
     <DashboardLayout title="Analytics" subtitle="Performance metrics and insights">
       <div className="space-y-6 animate-fade-in">
-        {/* Stats Grid */}
+        {/* Stats Grid - Now 8 cards in 4 columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
             <Card key={stat.title} style={{ animationDelay: `${index * 50}ms` }}>
@@ -135,8 +163,8 @@ export default function Analytics() {
                     <p className="text-3xl font-bold mt-2 text-foreground">{stat.value}</p>
                     <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
-                    <stat.icon className="w-6 h-6 text-primary-foreground" />
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                    <stat.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -278,6 +306,139 @@ export default function Analytics() {
                     ))}
                   </Bar>
                 </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row 3 - New additions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Vendor Category Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Vendor Categories
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* MOU Status Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                MOU Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={[
+                  { name: 'Active', value: mouStats.data?.activeMous || 0, fill: 'hsl(var(--success))' },
+                  { name: 'Pending', value: mouStats.data?.pendingMous || 0, fill: 'hsl(var(--warning))' },
+                  { name: 'Expired', value: mouStats.data?.expiredMous || 0, fill: 'hsl(var(--destructive))' },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {[
+                      { name: 'Active', value: mouStats.data?.activeMous || 0, fill: 'hsl(var(--success))' },
+                      { name: 'Pending', value: mouStats.data?.pendingMous || 0, fill: 'hsl(var(--warning))' },
+                      { name: 'Expired', value: mouStats.data?.expiredMous || 0, fill: 'hsl(var(--destructive))' },
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* System Health Score */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                System Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart data={[
+                  {
+                    category: 'Vendors',
+                    value: vendorStats.data?.totalVendors ? Math.min(100, (vendorStats.data.activeVendors / vendorStats.data.totalVendors) * 100) : 0
+                  },
+                  {
+                    category: 'Issues',
+                    value: issueStats.data?.totalIssues ? Math.min(100, (issueStats.data.resolvedIssues / issueStats.data.totalIssues) * 100) : 0
+                  },
+                  {
+                    category: 'MOUs',
+                    value: mouStats.data?.totalMous ? Math.min(100, (mouStats.data.activeMous / mouStats.data.totalMous) * 100) : 0
+                  },
+                  {
+                    category: 'SAFI',
+                    value: topSafiVendor?.score || 0
+                  },
+                  {
+                    category: 'Response',
+                    value: issueStats.data?.avgResolutionTime ? Math.max(0, 100 - Math.min(100, issueStats.data.avgResolutionTime / 2)) : 0
+                  },
+                ]}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="category" className="text-xs" />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                  <Radar
+                    name="Health Score"
+                    dataKey="value"
+                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.6}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </RadarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
