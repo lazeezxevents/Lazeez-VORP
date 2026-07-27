@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useIssues, useUpdateIssue, useDeleteIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { IssueForm } from "@/components/issues/IssueForm";
-import { IssueDetailPanelSimple } from "@/components/issues/IssueDetailPanelSimple";
+import { IssueDetailPanel } from "@/components/issues/IssueDetailPanel";
 import { IssueAIPanel } from "@/components/issues/IssueAIPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -570,18 +570,15 @@ export default function Issues() {
         issue={editingIssue}
       />
 
-      {/* Animated centered detail panel — simplified without broken features */}
-      <IssueDetailPanelSimple
-        issue={selectedIssue}
-        open={!!selectedIssue}
-        onClose={() => setSelectedIssue(null)}
-        onEdit={(issue) => {
-          setSelectedIssue(null);
-          setEditingIssue(issue);
-          setFormOpen(true);
-        }}
-        onOpenAI={(issue) => setAiIssue(issue)}
-      />
+      {/* Issue Detail Panel with Chat, Attachments, and Watchers */}
+      <AnimatePresence>
+        {selectedIssue && (
+          <IssueDetailPanel
+            issue={selectedIssue}
+            onClose={() => setSelectedIssue(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* AI assistant slide-in panel — independent from detail panel */}
       <IssueAIPanel

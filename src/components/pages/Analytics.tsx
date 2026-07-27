@@ -1,7 +1,8 @@
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAnalytics } from "@/hooks/useAnalytics";
-import { useBusinessInsights } from "@/hooks/useBusinessInsights";
+import { useAnalytics } from "@/components/hooks/useAnalytics";
+import { useBusinessInsights } from "@/components/hooks/useBusinessInsights";
+import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart, RadarChart, 
@@ -468,44 +469,55 @@ export default function Analytics() {
             <DataExportPanel />
           </div>
           <div className="lg:col-span-2">
-            {/* Performance Summary */}
+            {/* Performance Summary - Square Cards */}
             <Card>
               <CardHeader>
                 <CardTitle>Performance Summary</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground">Resolution Rate</p>
-                    <p className="text-3xl font-bold text-foreground my-3">
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="aspect-square p-8 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 flex flex-col justify-center items-center text-center hover:shadow-lg transition-shadow"
+                  >
+                    <p className="text-sm font-medium text-muted-foreground mb-4">Resolution Rate</p>
+                    <p className="text-5xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
                       {issueStats.data?.totalIssues
                         ? ((issueStats.data.resolvedIssues / issueStats.data.totalIssues) * 100).toFixed(1)
                         : 0}%
                     </p>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground">
                       {issueStats.data?.resolvedIssues || 0} of {issueStats.data?.totalIssues || 0} resolved
                     </p>
-                  </div>
-                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground">Vendor Activation Rate</p>
-                    <p className="text-3xl font-bold text-foreground my-3">
+                  </motion.div>
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="aspect-square p-8 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 flex flex-col justify-center items-center text-center hover:shadow-lg transition-shadow"
+                  >
+                    <p className="text-sm font-medium text-muted-foreground mb-4">Vendor Activation Rate</p>
+                    <p className="text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                       {vendorStats.data?.totalVendors
                         ? ((vendorStats.data.activeVendors / vendorStats.data.totalVendors) * 100).toFixed(1)
                         : 0}%
                     </p>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground">
                       {vendorStats.data?.activeVendors || 0} active vendors
                     </p>
-                  </div>
-                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground">Average Vendor Rating</p>
-                    <p className="text-3xl font-bold text-foreground my-3">
+                  </motion.div>
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="aspect-square p-8 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 flex flex-col justify-center items-center text-center hover:shadow-lg transition-shadow"
+                  >
+                    <p className="text-sm font-medium text-muted-foreground mb-4">Average Vendor Rating</p>
+                    <p className="text-5xl font-bold text-amber-600 dark:text-amber-400 mb-2">
                       {(vendorStats.data?.avgRating || 0).toFixed(1)} ★
                     </p>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground">
                       across all rated vendors
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
               </CardContent>
             </Card>
