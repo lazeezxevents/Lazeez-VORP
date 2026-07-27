@@ -475,9 +475,9 @@ export default function Analytics() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-4 rounded-lg bg-muted/30">
+                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">Resolution Rate</p>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-3xl font-bold text-foreground my-3">
                       {issueStats.data?.totalIssues
                         ? ((issueStats.data.resolvedIssues / issueStats.data.totalIssues) * 100).toFixed(1)
                         : 0}%
@@ -486,9 +486,9 @@ export default function Analytics() {
                       {issueStats.data?.resolvedIssues || 0} of {issueStats.data?.totalIssues || 0} resolved
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30">
+                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">Vendor Activation Rate</p>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-3xl font-bold text-foreground my-3">
                       {vendorStats.data?.totalVendors
                         ? ((vendorStats.data.activeVendors / vendorStats.data.totalVendors) * 100).toFixed(1)
                         : 0}%
@@ -497,9 +497,9 @@ export default function Analytics() {
                       {vendorStats.data?.activeVendors || 0} active vendors
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30">
+                  <div className="p-6 rounded-lg bg-muted/30 min-h-[180px] flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">Average Vendor Rating</p>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-3xl font-bold text-foreground my-3">
                       {(vendorStats.data?.avgRating || 0).toFixed(1)} ★
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
