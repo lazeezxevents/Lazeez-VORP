@@ -652,9 +652,7 @@ export default function Calendar() {
                               navigate("/issues");
                             } else if (event.type === "payment") {
                               navigate(`/vendors/${(event.originalData as any).vendor_id}`);
-                            } else if (event.type === "vault_expiration" || event.type === "vault_termination" || event.type === "renewal") {
-                              navigate("/mou-vault");
-                            } else if (event.type === "mou_expiration") {
+                            } else if (event.type === "vault_expiration" || event.type === "vault_termination" || event.type === "renewal" || event.type === "mou_expiration") {
                               navigate("/mous");
                             }
                           }}

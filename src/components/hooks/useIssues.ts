@@ -218,7 +218,7 @@ export function useCreateIssue() {
     mutationFn: async (input: CreateIssueInput) => {
       const { data, error } = await supabase
         .from("issues")
-        .insert({ ...input, reported_by: user!.id, created_by: user!.id })
+        .insert({ ...input, reported_by: user!.id })
         .select()
         .single();
 
