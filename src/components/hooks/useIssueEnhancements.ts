@@ -108,12 +108,16 @@ export function useIssueActivity(issueId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("issue_activity")
-        .select("*, user:profiles(full_name, email, avatar_url)")
+        .select("*, profiles!issue_activity_user_id_fkey(full_name, email, avatar_url)")
         .eq("issue_id", issueId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as unknown as IssueActivity[];
+      // Remap profiles -> user for component compatibility
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        user: row.profiles ?? null,
+      })) as unknown as IssueActivity[];
     },
     enabled: !!issueId,
     staleTime: 0, // always fresh
@@ -154,10 +158,10 @@ export function useAddComment(issueId: string) {
           action_type: "comment",
           comment_text: commentText,
         })
-        .select("*, user:profiles(full_name, email, avatar_url)")
+        .select("*, profiles!issue_activity_user_id_fkey(full_name, email, avatar_url)")
         .single();
       if (error) throw error;
-      return data;
+      return { ...(data as any), user: (data as any).profiles ?? null };
     },
     // Optimistic: immediately append to cache so it shows without delay
     onMutate: async (commentText: string) => {
@@ -205,11 +209,14 @@ export function useIssueAttachments(issueId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("issue_attachments")
-        .select("*, uploader:profiles(full_name, email)")
+        .select("*, profiles!issue_attachments_uploaded_by_fkey(full_name, email)")
         .eq("issue_id", issueId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as unknown as IssueAttachment[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        uploader: row.profiles ?? null,
+      })) as unknown as IssueAttachment[];
     },
     enabled: !!issueId,
     staleTime: 0,
@@ -375,10 +382,13 @@ export function useIssueWatchers(issueId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("issue_watchers")
-        .select("*, user:profiles(full_name, email, avatar_url)")
+        .select("*, profiles!issue_watchers_user_id_fkey(full_name, email, avatar_url)")
         .eq("issue_id", issueId);
       if (error) throw error;
-      return data as unknown as IssueWatcher[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        user: row.profiles ?? null,
+      })) as unknown as IssueWatcher[];
     },
     enabled: !!issueId,
     staleTime: 0,
@@ -470,17 +480,18 @@ export function useMyWatchedIssues() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("issue_watchers")
-        .select(`
-          issue_id,
-          issue:issues(
-            id, title, status, priority, created_at, updated_at,
-            vendor:vendors(name)
-          )
-        `)
+        .select(`issue_id, issues!issue_watchers_issue_id_fkey(id, title, status, priority, created_at, updated_at, vendors!issues_vendor_id_fkey(name))`)
         .eq("user_id", user.id);
       if (error) throw error;
       return (data ?? [])
-        .map((row: any) => row.issue)
+        .map((row: any) => {
+          const iss = row.issues;
+          if (!iss) return null;
+          return {
+            ...iss,
+            vendor: iss.vendors ?? null,
+          };
+        })
         .filter(Boolean) as Array<{
           id: string; title: string; status: string; priority: string;
           created_at: string; updated_at: string; vendor: { name: string } | null;
@@ -515,11 +526,14 @@ export function useIssueTimeLogs(issueId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("issue_time_logs")
-        .select("*, user:profiles(full_name, email)")
+        .select("*, profiles!issue_time_logs_user_id_fkey(full_name, email)")
         .eq("issue_id", issueId)
         .order("logged_date", { ascending: false });
       if (error) throw error;
-      return data as unknown as IssueTimeLog[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        user: row.profiles ?? null,
+      })) as unknown as IssueTimeLog[];
     },
     enabled: !!issueId,
     staleTime: 0,
@@ -607,11 +621,14 @@ export function useIssueChatMessages(issueId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("issue_chat_messages")
-        .select("*, user:profiles(full_name, email, avatar_url)")
+        .select("*, profiles!issue_chat_messages_user_id_fkey(full_name, email, avatar_url)")
         .eq("issue_id", issueId)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as unknown as IssueChatMessage[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        user: row.profiles ?? null,
+      })) as unknown as IssueChatMessage[];
     },
     enabled: !!issueId,
     staleTime: 0,
@@ -658,10 +675,11 @@ export function useSendChatMessage(issueId: string) {
           is_ai: isAi,
           ai_agent_name: aiAgentName ?? null,
         })
-        .select("*, user:profiles(full_name, email, avatar_url)")
+        .select("*, profiles!issue_chat_messages_user_id_fkey(full_name, email, avatar_url)")
         .single();
       if (error) throw error;
-      return data;
+      // Remap profiles -> user
+      return { ...(data as any), user: (data as any).profiles ?? null } as IssueChatMessage;
     },
     // Optimistic insert for instant display
     onMutate: async (vars) => {

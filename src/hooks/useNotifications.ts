@@ -369,6 +369,16 @@ export function useNotifications() {
 
   const unreadCount = unreadNotifications.length;
 
+  // Track read items in state for UI optimistic updates
+  const [readItems, setReadItems] = useState<Set<string>>(new Set());
+  const [deletedItems, setDeletedItems] = useState<Set<string>>(new Set());
+
+  // Update readItems when marking as read
+  useEffect(() => {
+    const readIds = new Set(notifications.filter(n => n.read).map(n => n.id));
+    setReadItems(readIds);
+  }, [notifications]);
+
   return {
     notifications: filteredNotifications,
     unreadNotifications,
@@ -385,7 +395,7 @@ export function useNotifications() {
     handleArchiveOld,
     refetch,
     manualRefresh,
-    readItems: new Set(),
-    deletedItems: new Set()
+    readItems,
+    deletedItems
   };
 }
