@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, Plus } from "lucide-react";
 import { PERMISSIONS } from "@/lib/permissions";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,8 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
   const { user, profile, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const canCreateTask = hasPermission(PERMISSIONS.ISSUES.CREATE_TASK);
+  const [newTaskDialogOpen, setNewTaskDialogOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
   const { data: employees = [] } = useQuery({
     queryKey: ["issue-assignees"],
     queryFn: async () => {
@@ -153,6 +156,29 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
     }
     onOpenChange(false);
     form.reset();
+  };
+
+  const handleCreateNewTask = async () => {
+    if (!newTaskTitle.trim() || selectedProjectId === "none") return;
+    
+    try {
+      const { data, error } = await (supabase.from("project_tasks") as any).insert({
+        project_id: selectedProjectId,
+        title: newTaskTitle,
+        assigned_to: form.getValues("assigned_to") === "none" ? null : form.getValues("assigned_to"),
+      }).select().single();
+
+      if (error) throw error;
+      
+      if (data) {
+        form.setValue("project_task_id", data.id);
+        queryClient.invalidateQueries({ queryKey: ["issue-project-tasks", selectedProjectId] });
+        setNewTaskDialogOpen(false);
+        setNewTaskTitle("");
+      }
+    } catch (error) {
+      console.error("Failed to create task:", error);
+    }
   };
 
   const isLoading = createIssue.isPending || updateIssue.isPending;
@@ -283,40 +309,33 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
                 name="project_task_id"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center gap-2">
-                      <FormLabel>Project task (optional)</FormLabel>
-                      {selectedProjectId !== "none" && canCreateTask && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5"
-                          onClick={() => {
-                            const taskTitle = prompt("Enter task title:");
-                            if (taskTitle && selectedProjectId !== "none") {
-                              (supabase.from("project_tasks") as any).insert({
-                                project_id: selectedProjectId,
-                                title: taskTitle,
-                                assigned_to: form.getValues("assigned_to") === "none" ? null : form.getValues("assigned_to"),
-                              }).select().single().then(({ data }) => {
-                                if (data) {
-                                  form.setValue("project_task_id", data.id);
-                                  queryClient.invalidateQueries({ queryKey: ["issue-project-tasks", selectedProjectId] });
-                                }
-                              });
-                            }
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={selectedProjectId === "none"}>
+                    <FormLabel>Project task (optional)</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        if (value === "create_new") {
+                          setNewTaskDialogOpen(true);
+                        } else {
+                          field.onChange(value);
+                        }
+                      }} 
+                      value={field.value} 
+                      disabled={selectedProjectId === "none"}
+                    >
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={selectedProjectId === "none" ? "Choose a project first" : "Select project task"} /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue placeholder={selectedProjectId === "none" ? "Choose a project first" : "No linked task"} />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">No linked task</SelectItem>
+                        {canCreateTask && selectedProjectId !== "none" && (
+                          <SelectItem value="create_new">
+                            <div className="flex items-center gap-2 text-primary font-medium">
+                              <Plus className="h-4 w-4" />
+                              Create new task
+                            </div>
+                          </SelectItem>
+                        )}
                         {projectTasks.map((task: { id: string; title: string }) => (
                           <SelectItem key={task.id} value={task.id}>{task.title}</SelectItem>
                         ))}
@@ -406,6 +425,58 @@ export function IssueForm({ open, onOpenChange, issue }: IssueFormProps) {
           </form>
         </Form>
       </DialogContent>
+
+      {/* Create New Task Dialog */}
+      <Dialog open={newTaskDialogOpen} onOpenChange={setNewTaskDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="task-title" className="text-sm font-medium">
+                Task Title
+              </label>
+              <Input
+                id="task-title"
+                placeholder="Enter task title..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTaskTitle.trim()) {
+                    handleCreateNewTask();
+                  }
+                }}
+              />
+            </div>
+            {form.getValues("assigned_to") !== "none" && (
+              <p className="text-sm text-muted-foreground">
+                Task will be assigned to the same person as this issue
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNewTaskDialogOpen(false);
+                setNewTaskTitle("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewTask}
+              disabled={!newTaskTitle.trim()}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Task
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -152,6 +152,7 @@ export function VendorRemarks({ vendorId }: VendorRemarksProps) {
                   <CardContent className="pt-4">
                     <div className="flex gap-3">
                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={remark.created_by_avatar || undefined} alt={remark.created_by_name || "User"} />
                         <AvatarFallback className="text-xs">
                           {(remark.created_by_name || "U").slice(0, 2).toUpperCase()}
                         </AvatarFallback>

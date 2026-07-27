@@ -56,10 +56,21 @@ const renderParagraph = (
     align: "left" | "center" = "left"
 ): number => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
+    // Split text properly to fit within margins
     const lines = doc.splitTextToSize(text, maxWidth);
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
     for (let i = 0; i < lines.length; i++) {
-        const lineY = y + i * lineHeight;
+        let lineY = y + i * lineHeight;
+        
+        // Check if we need a new page
+        if (lineY > pageHeight - 20) {
+            doc.addPage();
+            lineY = 20;
+            y = 20 - (i * lineHeight);
+        }
+        
         if (align === "center") {
             doc.text(lines[i], pageWidth / 2, lineY, { align: "center" });
         } else {
@@ -81,7 +92,9 @@ const renderLineWithBoldValues = (
 ): number => {
     const segments = splitLineForBold(line, boldValues);
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     let cursorX = align === "center" ? (pageWidth - maxWidth) / 2 : x;
+    let currentY = y;
 
     if (align === "center") {
         doc.setFont("helvetica", "normal");
@@ -94,11 +107,26 @@ const renderLineWithBoldValues = (
 
     for (const seg of segments) {
         doc.setFont("helvetica", seg.bold ? "bold" : "normal");
-        doc.text(seg.text, cursorX, y);
-        cursorX += doc.getTextWidth(seg.text);
+        const textWidth = doc.getTextWidth(seg.text);
+        
+        // Check if text will go outside right margin
+        if (cursorX + textWidth > pageWidth - 20) {
+            // Move to next line
+            currentY += lineHeight;
+            cursorX = x;
+            
+            // Check if we need a new page
+            if (currentY > pageHeight - 20) {
+                doc.addPage();
+                currentY = 20;
+            }
+        }
+        
+        doc.text(seg.text, cursorX, currentY);
+        cursorX += textWidth;
     }
 
-    return y + lineHeight;
+    return currentY + lineHeight;
 };
 
 const renderLockedContent = (

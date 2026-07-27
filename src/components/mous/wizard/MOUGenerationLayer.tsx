@@ -28,7 +28,7 @@ EXTRACT THESE FIELDS (fill in null for anything not found):
   "business_name": "string",
   "phone": "string",
   "bank_details": {"title": "string", "iban": "string", "bank_name": "string"},
-  "menu": [{"name": "string", "quantity": "string", "price": "string"}],
+  "menu": [{"name": "string", "quantity": "string (MUST include unit like '5 Kg', '10 pieces', '1 dozen', etc.)", "price": "string"}],
   "address": "string",
   "city": "string (extract from address - look for city names like Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Sialkot, Gujranwala, etc.)",
   "commission": number,
@@ -39,6 +39,14 @@ EXTRACT THESE FIELDS (fill in null for anything not found):
 CRITICAL RULES FOR "menu" ARRAY:
 1. Extract EVERY SINGLE ITEM mentioned. Do not limit to 14 items. If there are 50 items, extract all 50.
 2. Keep only the final agreed price for each item. Do not include discounted prices or discount calculations.
+3. QUANTITY FIELD MUST ALWAYS INCLUDE A UNIT. Examples:
+   - "5 Kg" (kilograms)
+   - "10 pieces"
+   - "1 dozen"
+   - "100 heads"
+   - "2 Kg"
+   - "15 items"
+   If the user mentions quantity without unit, ask or infer the most appropriate unit based on the food item.
 
 CRITICAL RULES FOR "city":
 1. Extract city name from the address field
