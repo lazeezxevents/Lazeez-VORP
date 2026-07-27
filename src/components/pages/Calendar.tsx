@@ -648,10 +648,15 @@ export default function Calendar() {
                           key={event.id}
                           className={cn("p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow", getEventColor(event))}
                           onClick={() => {
-                            if (event.type === "issue_due") navigate("/issues");
-                            else if (event.type === "payment") navigate(`/vendors/${(event.originalData as any).vendor_id}`);
-                            else if (event.type.startsWith("vault") || event.type === "renewal") navigate("/mou-vault");
-                            else navigate("/mous");
+                            if (event.type === "issue_due") {
+                              navigate("/issues");
+                            } else if (event.type === "payment") {
+                              navigate(`/vendors/${(event.originalData as any).vendor_id}`);
+                            } else if (event.type === "vault_expiration" || event.type === "vault_termination" || event.type === "renewal") {
+                              navigate("/mou-vault");
+                            } else if (event.type === "mou_expiration") {
+                              navigate("/mous");
+                            }
                           }}
                         >
                           <div className="flex items-center justify-between">

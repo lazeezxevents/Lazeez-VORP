@@ -124,20 +124,31 @@ export const generateEliteDOCX = async (data: DOCXGenerationData) => {
                     })
                 ),
             }),
-            ...values.menu.map(item =>
-                new TableRow({
+            ...values.menu.map(item => {
+                // Extract just the price number, remove the unit (e.g., "2600/- per Kg" → "2600/-")
+                let priceValue = item.price;
+                if (priceValue.includes(" per ")) {
+                    // Extract price before " per "
+                    priceValue = priceValue.split(" per ")[0];
+                }
+                // Ensure it ends with "/-" format
+                if (!priceValue.includes("/-")) {
+                    priceValue = `${priceValue}/-`;
+                }
+                
+                return new TableRow({
                     children: [
                         item.name,
                         item.quantity,
-                        item.price.includes("/-") ? item.price : `${item.price}/-`,
+                        priceValue,
                     ].map(text =>
                         new TableCell({
                             borders: cellBorder,
                             children: [new Paragraph({ children: [new TextRun({ text, size: 18 })] })],
                         })
                     ),
-                })
-            ),
+                });
+            }),
         ],
     });
 
