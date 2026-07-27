@@ -39,8 +39,8 @@ import {
 } from "@/components/ui/select";
 import { useIssues, useUpdateIssue, useDeleteIssue, Issue, IssuePriority, IssueStatus } from "@/hooks/useIssues";
 import { IssueForm } from "@/components/issues/IssueForm";
-import { IssueAIAssistant } from "@/components/issues/IssueAIAssistant";
-import { IssueDetailSheet } from "@/components/issues/IssueDetailSheet";
+import { IssueDetailPanel } from "@/components/issues/IssueDetailPanel";
+import { IssueAIPanel } from "@/components/issues/IssueAIPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
@@ -487,20 +487,24 @@ export default function Issues() {
         issue={editingIssue}
       />
 
-      <IssueAIAssistant
-        open={!!aiIssue}
-        onOpenChange={(open) => !open && setAiIssue(null)}
-        issue={aiIssue}
-      />
-
-      <IssueDetailSheet
+      {/* Animated centered detail panel — replaces the old side sheet */}
+      <IssueDetailPanel
         issue={selectedIssue}
         open={!!selectedIssue}
-        onOpenChange={(open) => !open && setSelectedIssue(null)}
+        onClose={() => setSelectedIssue(null)}
         onEdit={(issue) => {
+          setSelectedIssue(null);
           setEditingIssue(issue);
           setFormOpen(true);
         }}
+        onOpenAI={(issue) => setAiIssue(issue)}
+      />
+
+      {/* AI assistant slide-in panel — independent from detail panel */}
+      <IssueAIPanel
+        issue={aiIssue}
+        open={!!aiIssue}
+        onClose={() => setAiIssue(null)}
       />
 
       <AlertDialog open={!!deleteIssue} onOpenChange={() => setDeleteIssue(null)}>
