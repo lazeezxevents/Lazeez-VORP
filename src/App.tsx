@@ -26,6 +26,7 @@ import ProjectBoard from "@/components/projects/ProjectBoard";
 import ApprovalPending from "@/pages/ApprovalPending";
 import SetPassword from "@/pages/SetPassword";
 import IssueBook from "@/pages/IssueBook";
+import IssueArchive from "@/pages/IssueArchive";
 import Archive from "@/pages/Archive";
 import Error500 from "@/pages/Error500";
 import Error403 from "@/pages/Error403";
@@ -191,6 +192,14 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <IssueBook />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/issue-archive"
+                    element={
+                      <ProtectedRoute>
+                        <IssueArchive />
                       </ProtectedRoute>
                     }
                   />

@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { VendorForm } from "@/components/vendors/VendorForm";
+import { VendorExportButton } from "@/components/vendors/VendorExportButton";
 import { VendorDocumentUpload, useDeleteDocument } from "@/components/vendors/VendorDocumentUpload";
 import { VendorPaymentTimeline } from "@/components/vendors/VendorPaymentTimeline";
 import { VendorPerformanceChart } from "@/components/vendors/VendorPerformanceChart";
