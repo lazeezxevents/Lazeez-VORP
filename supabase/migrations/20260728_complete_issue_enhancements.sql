@@ -1,17 +1,12 @@
--- ============================================================================
 -- COMPLETE ISSUE ENHANCEMENTS - CLEAN REBUILD
--- ============================================================================
 -- This migration creates ALL issue enhancement tables from scratch with:
 -- - Proper schemas
 -- - Correct RLS policies
 -- - Real-time subscriptions
 -- - Auto-timer functionality
 -- - Storage buckets
--- ============================================================================
 
--- ============================================================================
 -- SECTION 1: DROP OLD TABLES (Clean slate)
--- ============================================================================
 
 DROP TABLE IF EXISTS issue_timers CASCADE;
 DROP TABLE IF EXISTS issue_label_relations CASCADE;
@@ -22,9 +17,7 @@ DROP TABLE IF EXISTS issue_chat_messages CASCADE;
 DROP TABLE IF EXISTS issue_watchers CASCADE;
 DROP TABLE IF EXISTS issue_activity CASCADE;
 
--- ============================================================================
 -- SECTION 2: CREATE TABLES
--- ============================================================================
 
 -- 2.1 Issue Activity (Remarks/Comments/History)
 CREATE TABLE issue_activity (
@@ -145,9 +138,7 @@ CREATE INDEX idx_issue_timers_issue ON issue_timers(issue_id);
 CREATE INDEX idx_issue_timers_user ON issue_timers(user_id);
 CREATE INDEX idx_issue_timers_active ON issue_timers(is_active) WHERE is_active = true;
 
--- ============================================================================
 -- SECTION 3: ROW LEVEL SECURITY (RLS)
--- ============================================================================
 
 -- 3.1 Issue Activity
 ALTER TABLE issue_activity ENABLE ROW LEVEL SECURITY;
@@ -249,9 +240,7 @@ CREATE POLICY "Anyone can manage timers"
   USING (true)
   WITH CHECK (true);
 
--- ============================================================================
 -- SECTION 4: STORAGE BUCKET FOR ATTACHMENTS
--- ============================================================================
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
@@ -306,9 +295,7 @@ CREATE POLICY "Authenticated update"
     AND auth.uid() IS NOT NULL
   );
 
--- ============================================================================
 -- SECTION 5: AUTO-TIMER TRIGGERS
--- ============================================================================
 
 -- Start timer when issue goes to in_progress
 CREATE OR REPLACE FUNCTION fn_start_issue_timer()
@@ -393,9 +380,7 @@ CREATE TRIGGER trg_stop_issue_timer
   WHEN (NEW.status IS DISTINCT FROM OLD.status)
   EXECUTE FUNCTION fn_stop_issue_timer();
 
--- ============================================================================
 -- SECTION 6: ENABLE REAL-TIME FOR ALL TABLES
--- ============================================================================
 
 DO $$
 DECLARE
@@ -426,9 +411,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- ============================================================================
 -- SECTION 7: INSERT DEFAULT LABELS (Optional)
--- ============================================================================
 
 INSERT INTO issue_labels (name, color, description, created_by)
 SELECT 
@@ -451,30 +434,28 @@ FROM auth.users
 LIMIT 1
 ON CONFLICT (name) DO NOTHING;
 
--- ============================================================================
--- DONE
--- ============================================================================
+-- DONE - Issue enhancements migration complete
 
 DO $$
 BEGIN
-  RAISE NOTICE '============================================';
+  RAISE NOTICE '--------------------------------------------';
   RAISE NOTICE 'ISSUE ENHANCEMENTS COMPLETE';
   RAISE NOTICE '';
   RAISE NOTICE 'Tables Created:';
-  RAISE NOTICE '  ✓ issue_activity (remarks/comments)';
-  RAISE NOTICE '  ✓ issue_watchers';
-  RAISE NOTICE '  ✓ issue_chat_messages (team chat)';
-  RAISE NOTICE '  ✓ issue_attachments';
-  RAISE NOTICE '  ✓ issue_time_logs';
-  RAISE NOTICE '  ✓ issue_labels';
-  RAISE NOTICE '  ✓ issue_label_relations';
-  RAISE NOTICE '  ✓ issue_timers (auto-timer)';
+  RAISE NOTICE '  - issue_activity (remarks/comments)';
+  RAISE NOTICE '  - issue_watchers';
+  RAISE NOTICE '  - issue_chat_messages (team chat)';
+  RAISE NOTICE '  - issue_attachments';
+  RAISE NOTICE '  - issue_time_logs';
+  RAISE NOTICE '  - issue_labels';
+  RAISE NOTICE '  - issue_label_relations';
+  RAISE NOTICE '  - issue_timers (auto-timer)';
   RAISE NOTICE '';
   RAISE NOTICE 'Features Enabled:';
-  RAISE NOTICE '  ✓ RLS Policies (all tables)';
-  RAISE NOTICE '  ✓ Real-time Subscriptions';
-  RAISE NOTICE '  ✓ Auto-timer (in_progress → resolved)';
-  RAISE NOTICE '  ✓ Storage Bucket (50MB attachments)';
-  RAISE NOTICE '  ✓ Default Labels (Bug, Enhancement, Urgent)';
-  RAISE NOTICE '============================================';
+  RAISE NOTICE '  - RLS Policies (all tables)';
+  RAISE NOTICE '  - Real-time Subscriptions';
+  RAISE NOTICE '  - Auto-timer (in_progress to resolved)';
+  RAISE NOTICE '  - Storage Bucket (50MB attachments)';
+  RAISE NOTICE '  - Default Labels (Bug, Enhancement, Urgent)';
+  RAISE NOTICE '--------------------------------------------';
 END $$;
