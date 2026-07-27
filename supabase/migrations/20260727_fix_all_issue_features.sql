@@ -33,6 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_issue_activity_user_id ON issue_activity(user_id)
 DROP POLICY IF EXISTS "System can create activity" ON issue_activity;
 DROP POLICY IF EXISTS "Authenticated users can add comments" ON issue_activity;
 DROP POLICY IF EXISTS "All authenticated can add activity" ON issue_activity;
+DROP POLICY IF EXISTS "Authenticated users can add activity" ON issue_activity;
+DROP POLICY IF EXISTS "Users can update own activity" ON issue_activity;
 
 -- Allow all authenticated users to insert activity (comments, time logs, etc.)
 CREATE POLICY "Authenticated users can add activity"
@@ -264,6 +266,7 @@ END $$;
 -- PART 7: Helper function to reorder tasks (for drag-drop)
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS reorder_project_tasks(UUID, INTEGER, TEXT);
 CREATE OR REPLACE FUNCTION reorder_project_tasks(
   task_id UUID,
   new_position INTEGER,
@@ -329,6 +332,7 @@ GRANT EXECUTE ON FUNCTION reorder_project_tasks TO authenticated;
 -- PART 8: Trigger to auto-update updated_at timestamp
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
