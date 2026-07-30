@@ -12,7 +12,6 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Vendors from "@/pages/Vendors";
 import VendorDetail from "@/pages/VendorDetail";
-import Issues from "@/pages/Issues";
 import MOUs from "@/pages/MOUs";
 import MOUVault from "@/pages/MOUVault";
 import Analytics from "@/pages/Analytics";
@@ -22,15 +21,11 @@ import Notifications from "@/pages/Notifications";
 import Calendar from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 import UserApprovals from "@/pages/UserApprovals";
-import ProjectBoard from "@/components/projects/ProjectBoard";
 import ApprovalPending from "@/pages/ApprovalPending";
 import SetPassword from "@/pages/SetPassword";
-import IssueBook from "@/pages/IssueBook";
-import IssueArchive from "@/pages/IssueArchive";
 import Archive from "@/pages/Archive";
 import Error500 from "@/pages/Error500";
 import Error403 from "@/pages/Error403";
-import Communication from "@/pages/Communication";
 import { DashboardLayout } from "@/components/layout";
 import { Component, ErrorInfo, ReactNode } from "react";
 import { InteractionSoundController } from "@/components/utils/InteractionSoundController";
@@ -122,14 +117,6 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <VendorDetail />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/issues"
-                    element={
-                      <ProtectedRoute>
-                        <Issues />
                       </ProtectedRoute>
                     }
                   />
