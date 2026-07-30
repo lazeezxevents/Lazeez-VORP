@@ -114,6 +114,23 @@ export class SoundManager {
   play(soundType: SoundType, config?: Partial<SoundConfig>): void {
     if (!this.enabled) return;
 
+    // These preferences are shared by both notification settings screens.
+    // Read them at play time so a change takes effect immediately, without a
+    // page reload or a separate global state provider.
+    try {
+      const raw = localStorage.getItem("lazeez-notification-ui-prefs");
+      const preferences = raw ? JSON.parse(raw) : {};
+      if (preferences.enable_sound === false) return;
+      if (soundType === "hover" && preferences.enable_hover_sounds !== true) return;
+      if (soundType === "click" && preferences.enable_click_sounds === false) return;
+      if (
+        ["refresh", "diagnostic", "approval_complete", "system_ready", "task_complete"].includes(soundType) &&
+        preferences.enable_system_sounds === false
+      ) return;
+    } catch {
+      // Keep the default sound behavior if browser storage is unavailable.
+    }
+
     try {
       const audio = this.getAudio(soundType);
       const finalConfig = { ...DEFAULT_CONFIGS[soundType], ...config };

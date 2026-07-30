@@ -122,15 +122,21 @@ export function useNotifications() {
   const archiveNotificationMutation = useMutation({
     mutationFn: async (ids: string | string[]) => {
       const idArray = Array.isArray(ids) ? ids : [ids];
-      const { error } = await supabase
-        .from("notifications")
-        .update({ archived: true })
-        .in("id", idArray)
-        .eq("user_id", user?.id);
-      if (error) throw error;
+      if (!user?.id) throw new Error("User not authenticated");
+
+      // The Archive page reads from archived_notifications, so use the
+      // database procedure that moves each item there before removing it from
+      // the live notification feed.
+      await Promise.all(idArray.map(async (id) => {
+        const { error } = await supabase.rpc("archive_notification", {
+          notification_id: id,
+        });
+        if (error) throw error;
+      }));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-notifications"] });
     },
   });
 
@@ -138,13 +144,13 @@ export function useNotifications() {
   const archiveAllMutation = useMutation({
     mutationFn: async (ids?: string[]) => {
       if (ids && ids.length > 0) {
-        // Archive specific notifications
-        const { error } = await supabase
-          .from("notifications")
-          .update({ archived: true })
-          .in("id", ids)
-          .eq("user_id", user?.id);
-        if (error) throw error;
+        if (!user?.id) throw new Error("User not authenticated");
+        await Promise.all(ids.map(async (id) => {
+          const { error } = await supabase.rpc("archive_notification", {
+            notification_id: id,
+          });
+          if (error) throw error;
+        }));
       } else {
         // Archive all notifications
         const { error } = await supabase.rpc("archive_all_notifications");
@@ -153,6 +159,7 @@ export function useNotifications() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unified-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-notifications"] });
     },
   });
 

@@ -33,6 +33,7 @@ import Error403 from "@/pages/Error403";
 import Communication from "@/pages/Communication";
 import { DashboardLayout } from "@/components/layout";
 import { Component, ErrorInfo, ReactNode } from "react";
+import { InteractionSoundController } from "@/components/utils/InteractionSoundController";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,7 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="light">
           <TooltipProvider>
+            <InteractionSoundController />
             <Toaster />
             <Sonner />
             <BrowserRouter>
