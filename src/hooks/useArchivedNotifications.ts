@@ -108,19 +108,41 @@ export function useArchivedNotifications() {
     },
   });
 
-  // Restore notification (unarchive and mark as UNREAD so user sees it again)
+  // Restore notification (recreate it in the live feed and mark it unread).
+  // archive_notification moves rows to archived_notifications, so an update
+  // alone cannot restore a record that is no longer in notifications.
   const restoreMutation = useMutation({
     mutationFn: async (notificationId: string) => {
       if (!user) throw new Error("User not authenticated");
 
-      // First, restore the notification in the main table (unarchive + mark as UNREAD)
-      const { error: updateError } = await supabase
-        .from("notifications")
-        .update({ archived: false, read: false })
-        .eq("id", notificationId)
-        .eq("user_id", user.id);
+      const { data: archived, error: archivedError } = await supabase
+        .from("archived_notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("notification_id", notificationId)
+        .single();
 
-      if (updateError) throw updateError;
+      if (archivedError) throw archivedError;
+
+      const { error: restoreError } = await supabase
+        .from("notifications")
+        .insert({
+          id: archived.notification_id,
+          user_id: archived.user_id,
+          type: archived.notification_type,
+          category: archived.category,
+          title: archived.title,
+          message: archived.message,
+          entity_type: archived.entity_type,
+          entity_id: archived.entity_id,
+          action_url: archived.action_url,
+          metadata: archived.metadata || {},
+          created_at: archived.original_created_at,
+          read: false,
+          archived: false,
+        });
+
+      if (restoreError) throw restoreError;
 
       // Then delete from archived_notifications table
       const { error: deleteError } = await supabase
