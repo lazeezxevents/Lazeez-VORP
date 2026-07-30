@@ -169,16 +169,6 @@ export default function Login() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Safety: if not loading and no user after 5 seconds, show the form
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isLoading) {
-        console.warn('[Login] Taking too long to load, continuing anyway');
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isLoading]);
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
