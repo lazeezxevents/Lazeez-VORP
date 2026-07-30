@@ -61,13 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initializeAuth() {
       try {
+        console.log('[Auth] Initializing...');
         // Get the initial session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('[Auth] Session fetched:', currentSession ? 'exists' : 'none');
         if (!mounted) return;
 
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
+          console.log('[Auth] User set:', currentSession.user.email);
           // Expose debug info to the window for easy inspection (dev only)
           if (!import.meta.env.PROD) {
             (window as any).__authDebug = { user: currentSession.user, session: currentSession, isLoading };
@@ -75,17 +78,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Immediate override for Master Admin for speed
           if (currentSession.user.email === "highypestudio@gmail.com") {
             setRole("admin");
+            console.log('[Auth] Master admin detected');
           }
           await fetchUserData(currentSession.user.id);
           initialFetchDone.current = true;
+          console.log('[Auth] Initialization complete');
         } else {
+          console.log('[Auth] No session, completing initialization');
           setIsLoading(false);
           if (!import.meta.env.PROD) {
             (window as any).__authDebug = { user: null, session: null, isLoading: false };
           }
         }
       } catch (error) {
-        console.error("Auth init error:", error);
+        console.error("[Auth] Init error:", error);
         if (mounted) setIsLoading(false);
       }
     }
@@ -119,15 +125,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Absolute safety timeout - 8s max wait before forcing progress
+    // Absolute safety timeout - 3s max wait before forcing progress
     const safetyTimeout = setTimeout(() => {
-      if (mounted) {
+      if (mounted && isLoading) {
+        console.warn('[Auth] Safety timeout triggered - forcing loading complete');
         setIsLoading(false);
         if (!import.meta.env.PROD) {
           (window as any).__authDebug = { user: null, session: null, isLoading: false, timeout: true };
         }
       }
-    }, 8000);
+    }, 3000);
 
     return () => {
       mounted = false;
