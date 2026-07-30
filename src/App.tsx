@@ -169,30 +169,6 @@ const App = () => {
                     }
                   />
                   <Route
-                    path="/projects"
-                    element={
-                      <ProtectedRoute>
-                        <ProjectBoard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/issue-book"
-                    element={
-                      <ProtectedRoute>
-                        <IssueBook />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/issue-archive"
-                    element={
-                      <ProtectedRoute>
-                        <IssueArchive />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
                     path="/calendar"
                     element={
                       <ProtectedRoute>
@@ -213,14 +189,6 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <Archive />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/communication"
-                    element={
-                      <ProtectedRoute>
-                        <Communication />
                       </ProtectedRoute>
                     }
                   />
