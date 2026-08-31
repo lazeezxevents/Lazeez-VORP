@@ -54,7 +54,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: "llama3-8b-8192", // Extremely fast, free model
+                    model: "groq/compound-mini", // Extremely fast, free model
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: query }

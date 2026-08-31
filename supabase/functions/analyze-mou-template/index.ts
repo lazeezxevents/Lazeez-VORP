@@ -48,7 +48,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "llama3-70b-8192",
+                model: "groq/compound",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: `Filename: ${filename}\nDocument Text:\n${text}` }

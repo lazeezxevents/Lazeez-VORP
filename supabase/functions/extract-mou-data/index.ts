@@ -178,7 +178,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama3-70b-8192",
+          model: "groq/compound",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Extract MOU data from this text: ${extractedText}` }
@@ -314,13 +314,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
-
-  } catch (error) {
-  console.error("Extraction error:", error);
-  return new Response(
-    JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
 });

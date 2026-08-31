@@ -7,13 +7,14 @@ export interface GroqMessage {
 }
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-// Using 8b for lightning fast extraction/classification. Revert to a supported model.
-const DEFAULT_MODEL = "llama-3.1-8b-instant";
+// Using groq/compound-mini for lightning fast extraction/classification
+const DEFAULT_MODEL = "groq/compound-mini";
 
 /**
  * Ensures the app has a Groq key configured in .env
  */
 export function isGroqConfigured(): boolean {
+    // @ts-ignore - Vite env types
     const key = import.meta.env.VITE_GROQ_API_KEY?.trim();
     return !!key && key !== "your_groq_api_key_here";
 }
@@ -22,6 +23,7 @@ export function isGroqConfigured(): boolean {
  * Ensures the app has a Groq key configured in .env
  */
 function getApiKey(): string {
+    // @ts-ignore - Vite env types
     const key = import.meta.env.VITE_GROQ_API_KEY?.trim();
     if (!isGroqConfigured()) {
         throw new Error(
